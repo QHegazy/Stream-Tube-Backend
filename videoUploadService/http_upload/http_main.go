@@ -1,6 +1,8 @@
-package main
+// deprecated
+package http_main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -11,10 +13,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	pb "VideoUploadService/transcoding"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ProgressTracker struct {
@@ -29,14 +33,8 @@ var (
 
 func main() {
 	app := fiber.New(fiber.Config{
-		BodyLimit: 100 * 1024 * 1024 * 1024,
+		BodyLimit: 5 * 1024 * 1024 * 1024,
 	})
-
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept",
-		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-	}))
 
 	app.Post("/upload", uploadFile)
 	app.Get("/progress/:id", websocket.New(handleProgress))
@@ -70,7 +68,7 @@ func uploadFile(c *fiber.Ctx) error {
 			ext := filepath.Ext(fileHeader.Filename)
 
 			if _, ok := allowedExtensions[ext]; !ok {
-				return c.Status(400).SendString("Invalid file type. Only .mp4, .mkv, and .flv are allowed")
+				return c.Status(400).SendString("Invalid file type. Only .mp4, .mkv, .flv, .avi, and .mov are allowed")
 			}
 
 			file, err := fileHeader.Open()
@@ -88,11 +86,12 @@ func uploadFile(c *fiber.Ctx) error {
 			progressTrackers[uploadID] = tracker
 			mu.Unlock()
 
-			go saveFile(uploadID, tracker, file)
+			saveFile(uploadID, tracker, file)
+			go grpc_calls(uploadID)
 
 			return c.JSON(fiber.Map{
 				"id": uploadID,
-			}) // Send the upload ID back to the client
+			})
 		}
 	}
 
@@ -100,7 +99,8 @@ func uploadFile(c *fiber.Ctx) error {
 }
 
 func saveFile(uploadID string, tracker *ProgressTracker, file io.Reader) {
-	out, err := os.Create(uploadID)
+	// dev path 
+	out, err := os.Create(filepath.Join("../videos", uploadID))
 	if err != nil {
 		log.Println("Failed to create file:", err)
 		mu.Lock()
@@ -151,6 +151,39 @@ func handleProgress(c *websocket.Conn) {
 	c.Close()
 }
 
+func grpc_calls(uuid string) {
+    // Set a reasonable timeout
+    timeout := 30 * time.Second
+
+    // Create a context with timeout for both connection and RPC
+    ctx, cancel := context.WithTimeout(context.Background(), timeout)
+    defer cancel()
+
+    // Create the gRPC connection
+    conn, err := grpc.DialContext(ctx, "localhost:50051", 
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithBlock())
+    if err != nil {
+        log.Printf("Failed to connect: %v", err)
+        return
+    }
+    defer conn.Close()
+
+    client := pb.NewTranscoderClient(conn)
+
+    req := &pb.UploadCompleteRequest{
+        Uuid: uuid, 
+    }
+
+    // Call the NotifyUploadComplete RPC
+    res, err := client.NotifyUploadComplete(ctx, req)
+    if err != nil {
+        log.Printf("Error calling NotifyUploadComplete: %v", err)
+        return
+    }
+
+    log.Printf("Response: StatusCode=%d", res.StatusCode)
+}
 func (p *ProgressTracker) Write(b []byte) (int, error) {
 	n := len(b)
 	atomic.AddInt64(&p.UploadedBytes, int64(n))
