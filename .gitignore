@@ -1,0 +1,5 @@
+*.html
+videos
+.vscode
+VideoEncoderService/encode_env
+.env

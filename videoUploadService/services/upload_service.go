@@ -3,15 +3,15 @@ package uploadSerivce
 import (
 	pbt "VideoUploadService/transcoding"
 	pb "VideoUploadService/upload"
-	"log"
-
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -22,9 +22,14 @@ type FileServiceServer struct {
 
 // UploadVideo receives the video in chunks from the client and writes them to a file.
 func (s *FileServiceServer) UploadVideo(stream pb.FileService_UploadVideoServer) error {
+	err := godotenv.Load()
+    if err != nil {
+        log.Fatalf("Error loading .env file")
+    }
+	DEV_PATH := os.Getenv("DEV_PATH")
 	var totalReceived int64
 	fileName := uuid.NewString()
-	file, err := os.Create("/home/shradwo/backend_stream/videos/" + fileName)
+	file, err := os.Create(DEV_PATH + fileName)
 	if err != nil {
 		return err
 	}
@@ -33,9 +38,8 @@ func (s *FileServiceServer) UploadVideo(stream pb.FileService_UploadVideoServer)
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
-			// Finished receiving chunks, return the final response
 			return stream.SendAndClose(&pb.UploadVideoResponse{
-				Status:       200, // Indicate success
+				Status:       200, 
 				ReceivedSize: totalReceived,
 			})
 		}
@@ -74,7 +78,7 @@ func grpc_calls(uuid string) {
 
 	client := pbt.NewTranscoderClient(conn)
 
-	req := &pbt.UploadCompleteRequest{
+	req := &pbt.VideoUuidRequest{
 		Uuid: uuid,
 	}
 

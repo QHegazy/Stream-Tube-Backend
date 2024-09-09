@@ -35,6 +35,14 @@ fps="24"
 preset="veryslow"
 fmt="yuv420p"
 
+# Get total duration of the input file
+total_duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$input_file")
+total_duration=${total_duration%.*}  # Remove decimal part
+
+# Initialize variables for progress tracking
+current_progress=0
+total_tasks=4  
+
 # Encode video function
 encode_video() {
     local height="$1"
@@ -53,7 +61,19 @@ encode_video() {
         -hls_segment_filename "$output_dir/${height}p/${height}p_%03d.ts" \
         -movflags +faststart \
         -progress - \
-        "$output_dir/${height}p/${height}p.m3u8"
+        "$output_dir/${height}p/${height}p.m3u8" 2>&1 | \
+    while read line; do
+        if [[ $line == out_time_ms* ]]; then
+            current_time=${line#*=}
+            current_time=$((current_time / 1000000))  
+            task_progress=$((current_time * 100 / total_duration))
+            overall_progress=$((current_progress + task_progress / total_tasks))
+            echo -ne "Overall Progress: $overall_progress%\r"
+        fi
+    done
+
+    current_progress=$((current_progress + 100 / total_tasks))
+    echo -ne "Overall Progress: $current_progress%\r"
 }
 
 # Encode videos
@@ -75,4 +95,4 @@ cat > "$output_dir/master.m3u8" << EOF
 1080p/1080p.m3u8
 EOF
 
-echo "HLS encoding completed. Master playlist created at $output_dir/master.m3u8"
+echo -e "\nHLS encoding completed. Master playlist created at $output_dir/master.m3u8"
