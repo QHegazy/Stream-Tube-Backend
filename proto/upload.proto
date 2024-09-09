@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package upload;
+
+option go_package="./upload";
+
+service FileService {
+  rpc UploadVideo (stream UploadVideoRequest) returns (UploadVideoResponse);
+}
+
+message UploadVideoRequest {
+  bytes chunk = 1;
+  string type = 2;
+  int64 total_size = 3;  
+}
+
+message UploadVideoResponse {
+  uint32 status = 1;
+  int64 received_size = 2; 
+}

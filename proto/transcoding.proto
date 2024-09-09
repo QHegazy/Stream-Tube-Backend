@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package transcoding;
+
+option go_package = "./videoUploadService/transcoding";
+
+service VideoStatusService {
+  rpc StatusVideo ( VideoUuidRequest) returns (stream VideoStatusResponse);
+}
+
+service Transcoder {
+  rpc NotifyUploadComplete (VideoUuidRequest) returns (TranscodeResponse);
+}
+
+
+
+message TranscodeResponse {
+  uint32 status_code = 1;
+}
+
+message VideoUuidRequest {
+    string uuid = 1;  
+}
+
+message VideoStatusResponse {
+  uint32 status = 1;
+}
