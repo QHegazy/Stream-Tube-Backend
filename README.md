@@ -19,7 +19,7 @@ With support for live streaming through **RTMP**, real-time chat via **WebSocket
 
 ## 1. Backend Tech Stack
 - **Framework**: 
-  - [Go (Golang)](https://golang.org/) with [Fiber](https://gofiber.io/)
+  - [Go (Golang)](https://golang.org/) 
   - [Node.js](https://nodejs.org/) for real-time functionalities, such as **WebSocket-based chat**.
   - [Python](https://www.python.org/) .
   - [gRPC](https://grpc.io/) for high-performance communication between services
