@@ -26,7 +26,7 @@ With support for live streaming through **RTMP**, real-time chat via **WebSocket
 - **Database**:
   - [PostgreSQL](https://www.postgresql.org/) for relational data (video metadata, user profiles, etc.).
   - [Redis](https://redis.io/) for caching frequently accessed data.
-  - [MongoDB]
+  - [MongoDB](https://www.mongodb.com/)
 - **Object Storage**:
   -  Cloud Storage for video file storage.
 - **Video Processing**:
