@@ -2,7 +2,7 @@ package v1
 
 import (
 	"authService/config"
-	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -37,16 +37,6 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Authentication failed", http.StatusBadRequest)
         return
     }
-
-    // Marshal user data to JSON
-    userData, err := json.Marshal(user)
-    if err != nil {
-        http.Error(w, "Failed to marshal user data", http.StatusInternalServerError)
-        return
-    }
-
-    // Set Content-Type and return JSON response
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    w.Write(userData)
+    fmt.Println(user)
+    
 }

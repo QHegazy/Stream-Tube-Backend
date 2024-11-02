@@ -73,6 +73,7 @@ func LoadGoth() {
             facebookCallbackURL,
             "email",
             "public_profile",
+
         ),
         github.New(
             githubClientId,
