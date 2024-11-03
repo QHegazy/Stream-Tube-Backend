@@ -2,6 +2,7 @@ package v1
 
 import (
 	"authService/config"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,6 +38,8 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Authentication failed", http.StatusBadRequest)
         return
     }
-    fmt.Println(user)
+    fmt.Println(json.Marshal(user))
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(user)
     
 }
