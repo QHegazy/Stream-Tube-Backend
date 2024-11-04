@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: auth-backup
+  namespace: auth
+spec:
+  schedule: "0 2 * * *" # Run every day at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              command: ["sh", "-c", "chmod +x /backup.sh && /backup.sh"]
+              env:
+                - name: POSTGRES_USER
+                  value: "auth_user"
+                - name: POSTGRES_PASSWORD
+                  value: "auth_password"
+                - name: POSTGRES_DB
+                  value: "auth_db"
+          restartPolicy: OnFailure

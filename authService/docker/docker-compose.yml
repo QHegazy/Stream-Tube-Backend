@@ -8,22 +8,20 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
       - ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf
-      - ./server.crt:/var/lib/postgresql/server.crt
-      - ./server.key:/var/lib/postgresql/server.key
+      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - postgres_data:/var/lib/postgresql/data
+      - ./ssl:/var/lib/postgresql/ssl
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-auth_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auth_password}
       POSTGRES_DB: ${POSTGRES_DB:-auth_db}
-      POSTGRES_HOST: ${POSTGRES_HOST:-localhost}
-      PGDATA: /var/lib/postgresql/data/pgdata
+      PGDATA: /var/lib/postgresql/data
       POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
       POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
       POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
       POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-16MB}
       POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-128MB}
-    command: ["postgres", "-c", "config_file=/var/lib/postgresql/data/postgresql.conf"]
     healthcheck:
       test:
         [
@@ -121,7 +119,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: ${PWD}/data/postgres
+      device: ${PWD}/data
       o: bind
   pgadmin_data:
     driver: local
@@ -136,4 +134,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.28.0.0/16
+        - subnet: 172.30.0.0/16
