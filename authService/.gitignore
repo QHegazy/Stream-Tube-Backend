@@ -10,3 +10,4 @@ localhost+2.pem
 ./docker/data
 ./docker/ssl
 ./docker/pgadmin-servers.json
+*.log

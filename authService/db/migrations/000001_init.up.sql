@@ -25,13 +25,9 @@ CREATE TABLE IF NOT EXISTS auth.users (
     status auth.user_status DEFAULT 'pending_verification',
     email_verified TIMESTAMP DEFAULT NULL,
     last_active_at TIMESTAMP WITH TIME ZONE,
-    account_locked BOOLEAN DEFAULT FALSE,
-    requires_password_change BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
-    created_by UUID REFERENCES auth.users(id),
-    updated_by UUID REFERENCES auth.users(id),
     CONSTRAINT valid_username CHECK (username ~* '^[A-Za-z0-9._-]{3,50}$'),
     CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
@@ -41,17 +37,13 @@ CREATE TABLE IF NOT EXISTS auth.profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     full_name VARCHAR(255) NOT NULL,
-    display_name VARCHAR(100),
     profile_picture_url VARCHAR(255),
     cover_photo_url VARCHAR(255),
     birth_date DATE NOT NULL,
     gender VARCHAR(50),
-    bio TEXT,
     location VARCHAR(255),
     timezone VARCHAR(50),
     language VARCHAR(10) DEFAULT 'en',
-    website_url VARCHAR(255),
-    social_links JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
@@ -91,26 +83,18 @@ CREATE TABLE IF NOT EXISTS auth.oauth_users (
     provider_user_id VARCHAR(255) NOT NULL,
     access_token TEXT NOT NULL,
     refresh_token TEXT,
-    token_type VARCHAR(50),
-    scope TEXT[],
-    id_token TEXT,
     expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    UNIQUE (provider, provider_user_id),
-    UNIQUE (user_id, provider)
 );
 
 -- Enhanced Local Users Table
 CREATE TABLE IF NOT EXISTS auth.local_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
-    password_hash VARCHAR(512) NOT NULL,
-    password_salt VARCHAR(128) NOT NULL,
-    password_algorithm VARCHAR(50) DEFAULT 'argon2id',
-    password_iterations INTEGER DEFAULT 4,
+    password VARCHAR(512) NOT NULL,
     last_password_change TIMESTAMP WITH TIME ZONE,
     password_history JSONB[], -- Store previous password hashes
     force_password_change BOOLEAN DEFAULT FALSE,
@@ -156,26 +140,26 @@ CREATE TABLE IF NOT EXISTS security.account_security_status (
 );
 
 -- Enhanced User Access Logs
-CREATE TABLE IF NOT EXISTS security.user_access_logs (
-    log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
-    session_id UUID,
-    auth_method auth.auth_method NOT NULL,
-    auth_provider auth.oauth_provider,
-    ip_address INET,
-    user_agent TEXT,
-    device_info JSONB,
-    location_info JSONB,
-    login_successful BOOLEAN NOT NULL,
-    mfa_used BOOLEAN DEFAULT FALSE,
-    mfa_type auth.mfa_type,
-    risk_score INTEGER,
-    metadata JSONB DEFAULT '{}',
-    failure_reason VARCHAR(255),
-    login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
-);
+-- CREATE TABLE IF NOT EXISTS security.user_access_logs (
+--     log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--     user_id UUID NOT NULL,
+--     session_id UUID,
+--     auth_method auth.auth_method NOT NULL,
+--     auth_provider auth.oauth_provider,
+--     ip_address INET,
+--     user_agent TEXT,
+--     device_info JSONB,
+--     location_info JSONB,
+--     login_successful BOOLEAN NOT NULL,
+--     mfa_used BOOLEAN DEFAULT FALSE,
+--     mfa_type auth.mfa_type,
+--     risk_score INTEGER,
+--     metadata JSONB DEFAULT '{}',
+--     failure_reason VARCHAR(255),
+--     login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+--     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+--     FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
+-- );
 
 -- Enhanced Session Management
 CREATE TABLE IF NOT EXISTS session.sessions (
