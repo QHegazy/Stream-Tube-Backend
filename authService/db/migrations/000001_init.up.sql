@@ -140,26 +140,26 @@ CREATE TABLE IF NOT EXISTS security.account_security_status (
 );
 
 -- Enhanced User Access Logs
--- CREATE TABLE IF NOT EXISTS security.user_access_logs (
---     log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
---     user_id UUID NOT NULL,
---     session_id UUID,
---     auth_method auth.auth_method NOT NULL,
---     auth_provider auth.oauth_provider,
---     ip_address INET,
---     user_agent TEXT,
---     device_info JSONB,
---     location_info JSONB,
---     login_successful BOOLEAN NOT NULL,
---     mfa_used BOOLEAN DEFAULT FALSE,
---     mfa_type auth.mfa_type,
---     risk_score INTEGER,
---     metadata JSONB DEFAULT '{}',
---     failure_reason VARCHAR(255),
---     login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
---     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
---     FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
--- );
+CREATE TABLE IF NOT EXISTS security.user_access_logs (
+    log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    session_id UUID,
+    auth_method auth.auth_method NOT NULL,
+    auth_provider auth.oauth_provider,
+    ip_address INET,
+    user_agent TEXT,
+    device_info JSONB,
+    location_info JSONB,
+    login_successful BOOLEAN NOT NULL,
+    mfa_used BOOLEAN DEFAULT FALSE,
+    mfa_type auth.mfa_type,
+    risk_score INTEGER,
+    metadata JSONB DEFAULT '{}',
+    failure_reason VARCHAR(255),
+    login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
+);
 
 -- Enhanced Session Management
 CREATE TABLE IF NOT EXISTS session.sessions (

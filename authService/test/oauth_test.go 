@@ -1,0 +1,84 @@
+package test
+
+
+import (
+	v1 "authService/controllers/v1"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+
+	"github.com/gorilla/mux"
+)
+
+func TestOAuthServerSetup(t *testing.T) {
+	// Set up the router with the OAuth routes
+	r := mux.NewRouter()
+	r.HandleFunc("/auth/{provider}", v1.BeginAuthHandler)
+	r.HandleFunc("/auth/{provider}/callback", v1.CallbackHandler)
+
+
+	// Check if server starts and routes are accessible
+	req, err := http.NewRequest("GET", "/auth/google", nil)
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if status := rec.Code; status != http.StatusFound {
+		t.Errorf("Expected status %v; got %v", http.StatusFound, status)
+	}
+
+	// Test CallbackHandler route
+	req, err = http.NewRequest("GET", "/auth/google/callback", nil)
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
+	rec = httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if status := rec.Code; status != http.StatusBadRequest {
+		t.Errorf("Expected status %v; got %v", http.StatusBadRequest, status)
+	}
+}
+
+func TestBeginAuthHandler(t *testing.T) {
+	req, err := http.NewRequest("GET", "/auth/google", nil)
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
+	rec := httptest.NewRecorder()
+
+	// Create a new mux router and add the BeginAuthHandler
+	r := mux.NewRouter()
+	r.HandleFunc("/auth/{provider}", v1.BeginAuthHandler)
+
+	// Serve the request
+	r.ServeHTTP(rec, req)
+
+	// Check if BeginAuthHandler responds with a redirect (Found status)
+	if rec.Code != http.StatusFound {
+		t.Errorf("Expected status %v; got %v", http.StatusFound, rec.Code)
+	}
+}
+
+func TestCallbackHandler(t *testing.T) {
+	req, err := http.NewRequest("GET", "/auth/google/callback", nil)
+	if err != nil {
+		t.Fatalf("Could not create request: %v", err)
+	}
+	rec := httptest.NewRecorder()
+
+	// Create a new mux router and add the CallbackHandler
+	r := mux.NewRouter()
+	r.HandleFunc("/auth/{provider}/callback", v1.CallbackHandler)
+
+	// Serve the request
+	r.ServeHTTP(rec, req)
+
+	// Check for the response, expecting an error in this case
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %v; got %v", http.StatusBadRequest, rec.Code)
+	}
+}
