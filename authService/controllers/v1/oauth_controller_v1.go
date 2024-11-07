@@ -1,4 +1,4 @@
-package v1
+package controllers_v1
 
 import (
 	"authService/config"
@@ -7,39 +7,35 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth/gothic"
 )
 
 func init() {
-	config.LoadGoth() 
+	config.LoadGoth()
 }
 
-
-func BeginAuthHandler(w http.ResponseWriter, r *http.Request) {
-	provider := mux.Vars(r)["provider"]
-	q := r.URL.Query()
+func BeginAuthHandler(c *gin.Context) {
+	provider := c.Param("provider")
+	q := c.Request.URL.Query()
 	q.Set("provider", provider)
-	r.URL.RawQuery = q.Encode()
-	gothic.BeginAuthHandler(w, r)
+	c.Request.URL.RawQuery = q.Encode()
+	gothic.BeginAuthHandler(c.Writer, c.Request)
 }
 
-// callbackHandler handles the OAuth provider's callback after authentication
-func CallbackHandler(w http.ResponseWriter, r *http.Request) {
-    // Explicitly set the provider to microsoftonline for Microsoft
-    provider := mux.Vars(r)["provider"]
-    q := r.URL.Query()
-    q.Set("provider", provider)
-    r.URL.RawQuery = q.Encode()
+// CallbackHandler handles the OAuth provider's callback after authentication
+func CallbackHandler(c *gin.Context) {
+	provider := c.Param("provider")
+	q := c.Request.URL.Query()
+	q.Set("provider", provider)
+	c.Request.URL.RawQuery = q.Encode()
 
-    user, err := gothic.CompleteUserAuth(w, r)
-    if err != nil {
-        log.Printf("Authentication error: %v", err)
-        http.Error(w, "Authentication failed", http.StatusBadRequest)
-        return
-    }
-    fmt.Println(json.Marshal(user))
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(user)
-    
+	user, err := gothic.CompleteUserAuth(c.Writer, c.Request)
+	if err != nil {
+		log.Printf("Authentication error: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Authentication failed"})
+		return
+	}
+	fmt.Println(json.Marshal(user))
+	c.JSON(http.StatusOK, user)
 }

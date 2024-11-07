@@ -5,6 +5,8 @@ CREATE SCHEMA IF NOT EXISTS "auth";
 CREATE SCHEMA IF NOT EXISTS "session";
 CREATE SCHEMA IF NOT EXISTS "security";
 CREATE SCHEMA IF NOT EXISTS "notification";
+CREATE SCHEMA IF NOT EXISTS "profile";
+
 
 SET search_path TO "auth", "security", "session", "notification", public;
 
@@ -15,6 +17,7 @@ CREATE TYPE auth.auth_method AS ENUM ('local', 'oauth', 'mfa');
 CREATE TYPE auth.mfa_type AS ENUM ('authenticator', 'sms', 'email', 'security_key');
 CREATE TYPE notification.notification_type AS ENUM ('security', 'account', 'marketing', 'system');
 CREATE TYPE security.risk_level AS ENUM ('low', 'medium', 'high', 'critical');
+CREATE TYPE profile.gender AS ENUM ('male', 'female', 'other');
 
 -- Enhanced Users Table
 CREATE TABLE IF NOT EXISTS auth.users (
@@ -33,16 +36,14 @@ CREATE TABLE IF NOT EXISTS auth.users (
 );
 
 -- Enhanced Profiles Table
-CREATE TABLE IF NOT EXISTS auth.profiles (
+CREATE TABLE IF NOT EXISTS profile.profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     full_name VARCHAR(255) NOT NULL,
     profile_picture_url VARCHAR(255),
     cover_photo_url VARCHAR(255),
     birth_date DATE NOT NULL,
-    gender VARCHAR(50),
-    location VARCHAR(255),
-    timezone VARCHAR(50),
+    gender profile.gender NOT NULL,
     language VARCHAR(10) DEFAULT 'en',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -52,7 +53,7 @@ CREATE TABLE IF NOT EXISTS auth.profiles (
 );
 
 -- Enhanced Contact Table
-CREATE TABLE IF NOT EXISTS auth.contact (
+CREATE TABLE IF NOT EXISTS profile.contact (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     phone_number VARCHAR(20),
@@ -61,6 +62,8 @@ CREATE TABLE IF NOT EXISTS auth.contact (
     emergency_contact_phone VARCHAR(20),
     address_line1 VARCHAR(255),
     address_line2 VARCHAR(255),
+    location VARCHAR(255),
+    timezone VARCHAR(50),
     city VARCHAR(100),
     state VARCHAR(100),
     postal_code VARCHAR(20),
@@ -87,7 +90,7 @@ CREATE TABLE IF NOT EXISTS auth.oauth_users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 -- Enhanced Local Users Table
@@ -105,6 +108,22 @@ CREATE TABLE IF NOT EXISTS auth.local_users (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS session.sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    refresh_token VARCHAR(512),
+    device_id VARCHAR(255),
+    device_type VARCHAR(50),
+    ip_address INET,
+    user_agent TEXT,
+    is_mfa_completed BOOLEAN DEFAULT FALSE,
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    blacklisted_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
 -- New MFA Table
 CREATE TABLE IF NOT EXISTS security.mfa_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -160,24 +179,9 @@ CREATE TABLE IF NOT EXISTS security.user_access_logs (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
     FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
 );
-
 -- Enhanced Session Management
-CREATE TABLE IF NOT EXISTS session.sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
-    refresh_token VARCHAR(512),
-    device_id VARCHAR(255),
-    device_type VARCHAR(50),
-    ip_address INET,
-    user_agent TEXT,
-    is_mfa_completed BOOLEAN DEFAULT FALSE,
-    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    blacklisted_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-);
+
+
 
 -- User Preferences Table
 CREATE TABLE IF NOT EXISTS auth.user_preferences (
