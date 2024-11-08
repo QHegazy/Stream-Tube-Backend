@@ -7,68 +7,93 @@ import (
 )
 
 
-type MFASecurity struct {
-    ID          uuid.UUID  `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID      uuid.UUID  `json:"user_id" db:"user_id"`
-    MFAType     MFAType    `json:"mfa_type" db:"mfa_type"`
-    Secret      string     `json:"secret" db:"secret"`
-    Enabled     bool       `json:"enabled" db:"enabled"`
+type MFASettings struct {
+	ID          uuid.UUID  `json:"id" db:"id"`
+	UserID      uuid.UUID  `json:"user_id" db:"user_id"`
+	MFAType     string     `json:"mfa_type" db:"mfa_type"` 
+	MFASecret   string     `json:"mfa_secret" db:"mfa_secret"`
+	BackupCodes []string   `json:"backup_codes" db:"backup_codes"` 
+	LastMFAAt   *time.Time `json:"last_mfa_at" db:"last_mfa_at"`   
 }
 
-// Account Security Status Table
 type AccountSecurityStatus struct {
-    ID               uuid.UUID `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID           uuid.UUID `json:"user_id" db:"user_id"`
-    PasswordStatus   string    `json:"password_status" db:"password_status"`
-    MFASecurityLevel string    `json:"mfa_security_level" db:"mfa_security_level"`
-    LastRiskCheck    *time.Time `json:"last_risk_check,omitempty" db:"last_risk_check"`
-    RiskLevel        RiskLevel  `json:"risk_level" db:"risk_level"`
+	StatusID                uuid.UUID      `json:"status_id" db:"status_id"`
+	UserID                  uuid.UUID      `json:"user_id" db:"user_id"`
+	RiskLevel               string         `json:"risk_level" db:"risk_level"` 
+	LockReason              *string        `json:"lock_reason" db:"lock_reason"`
+	LockedUntil             *time.Time     `json:"locked_until" db:"locked_until"`
+	FailedLoginAttempts     int            `json:"failed_login_attempts" db:"failed_login_attempts"`
+	FailedMFAAttempts       int            `json:"failed_mfa_attempts" db:"failed_mfa_attempts"`
+	SuspiciousActivityCount int            `json:"suspicious_activity_count" db:"suspicious_activity_count"`
+	FailedLoginResetAt     *time.Time     `json:"failed_login_reset_at" db:"failed_login_reset_at"`
+	LastLoginAt            *time.Time     `json:"last_login_at" db:"last_login_at"`
+	LastLoginIP            *string        `json:"last_login_ip" db:"last_login_ip"`
+	KnownDevices           []interface{}  `json:"known_devices" db:"known_devices"` 
+	TrustedLocations       []interface{}  `json:"trusted_locations" db:"trusted_locations"` 
+	CreatedAt              time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt              time.Time      `json:"updated_at" db:"updated_at"`
 }
 
-// User Access Log Table
 type UserAccessLog struct {
-    ID           uuid.UUID `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID       uuid.UUID `json:"user_id" db:"user_id"`
-    IPAddress    string    `json:"ip_address" db:"ip_address"`
-    Location     string    `json:"location,omitempty" db:"location"`
-    DeviceInfo   string    `json:"device_info" db:"device_info"`
-    Action       string    `json:"action" db:"action"`
+	LogID             uuid.UUID   `json:"log_id" db:"log_id"`
+	UserID            uuid.UUID   `json:"user_id" db:"user_id"`
+	SessionID         *uuid.UUID  `json:"session_id" db:"session_id"`
+	AuthMethod        string      `json:"auth_method" db:"auth_method"`
+	AuthProvider      *string     `json:"auth_provider" db:"auth_provider"`
+	IPAddress         string      `json:"ip_address" db:"ip_address"`
+	UserAgent         string      `json:"user_agent" db:"user_agent"`
+	DeviceInfo        string      `json:"device_info" db:"device_info"`
+	LocationInfo      string      `json:"location_info" db:"location_info"`
+	LoginSuccessful   bool        `json:"login_successful" db:"login_successful"`
+	MFAUsed           bool        `json:"mfa_used" db:"mfa_used"`
+	MFAType           *string     `json:"mfa_type" db:"mfa_type"`
+	RiskScore         *int        `json:"risk_score" db:"risk_score"`
+	Metadata          string      `json:"metadata" db:"metadata"`
+	FailureReason     *string     `json:"failure_reason" db:"failure_reason"`
+	LoginTimestamp    time.Time   `json:"login_timestamp" db:"login_timestamp"`
 }
 
-// User Preferences Table
-type UserPreference struct {
-    ID                  uuid.UUID `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID              uuid.UUID `json:"user_id" db:"user_id"`
-    Language            string    `json:"language" db:"language"`
-    TimeZone            string    `json:"time_zone" db:"time_zone"`
-    NotificationEnabled bool      `json:"notification_enabled" db:"notification_enabled"`
+type UserPreferences struct {
+	ID                        uuid.UUID      `json:"id" db:"id"`
+	UserID                    uuid.UUID      `json:"user_id" db:"user_id"`
+	EmailNotifications        bool           `json:"email_notifications" db:"email_notifications"`
+	SMSNotifications          bool           `json:"sms_notifications" db:"sms_notifications"`
+	PushNotifications         bool           `json:"push_notifications" db:"push_notifications"`
+	TwoFactorAuthEnabled      bool           `json:"two_factor_auth_enabled" db:"two_factor_auth_enabled"`
+	PreferredCommunicationMethod string      `json:"preferred_communication_method" db:"preferred_communication_method"`
+	MarketingPreferences      string         `json:"marketing_preferences" db:"marketing_preferences"` 
+	PrivacySettings           string         `json:"privacy_settings" db:"privacy_settings"`         
+	ThemePreference           string         `json:"theme_preference" db:"theme_preference"`
 
 }
 
-// Notification Template Table
+
 type NotificationTemplate struct {
-    ID            uuid.UUID        `json:"id" db:"id" default:"uuid_generate_v4()"`
-    Type          NotificationType `json:"type" db:"type"`
-    TemplateName  string           `json:"template_name" db:"template_name"`
-    Content       string           `json:"content" db:"content"`
-    Language      string           `json:"language" db:"language"`
+	ID        uuid.UUID       `json:"id" db:"id,pk,type:uuid,default:uuid_generate_v4()"`
+	Type      NotificationType `json:"type" db:"type,notnull"`
+	Name      string          `json:"name" db:"name,notnull"`
+	Subject   *string         `json:"subject" db:"subject"`
+	Content   string          `json:"content" db:"content,notnull"`
 }
 
-// Notification History Table
 type NotificationHistory struct {
-    ID                uuid.UUID `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID            uuid.UUID `json:"user_id" db:"user_id"`
-    NotificationType  NotificationType `json:"notification_type" db:"notification_type"`
-    Status            string    `json:"status" db:"status"`
-    SentAt            *time.Time `json:"sent_at,omitempty" db:"sent_at"`
+	ID               uuid.UUID        `json:"id" db:"id,pk,type:uuid,default:uuid_generate_v4()"`
+	UserID           uuid.UUID        `json:"user_id" db:"user_id,type:uuid,notnull"`
+	TemplateID       uuid.UUID        `json:"template_id" db:"template_id,type:uuid,notnull"`
+	NotificationType NotificationType `json:"notification_type" db:"notification_type,type:notification_type,notnull"`
+	SentAt           time.Time        `json:"sent_at" db:"sent_at,type:timestamptz,default:now()"`
+	DeliveredAt      *time.Time       `json:"delivered_at" db:"delivered_at,type:timestamptz"`
+	ReadAt           *time.Time       `json:"read_at" db:"read_at,type:timestamptz"`
 }
 
-// Rate Limit Table
+
 type RateLimit struct {
-    ID               uuid.UUID `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID           uuid.UUID `json:"user_id" db:"user_id"`
-    IPAddress        string    `json:"ip_address" db:"ip_address"`
-    Requests         int       `json:"requests" db:"requests"`
-    Limit            int       `json:"limit" db:"limit"`
-    ResetAt          time.Time `json:"reset_at" db:"reset_at"`
+	ID            uuid.UUID     `json:"id" db:"id"`
+	UserID        uuid.UUID     `json:"user_id" db:"user_id"`
+	IpAddress     string        `json:"ip_address" db:"ip_address"`
+	Endpoint      string        `json:"endpoint" db:"endpoint"`
+	RequestCount  int           `json:"request_count" db:"request_count"`
+	WindowStart   time.Time     `json:"window_start" db:"window_start"`
+	WindowDuration time.Duration`json:"window_duration" db:"window_duration"`
+	MaxRequests   int           `json:"max_requests" db:"max_requests"`
 }

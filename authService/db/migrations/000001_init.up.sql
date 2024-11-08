@@ -19,7 +19,7 @@ CREATE TYPE notification.notification_type AS ENUM ('security', 'account', 'mark
 CREATE TYPE security.risk_level AS ENUM ('low', 'medium', 'high', 'critical');
 CREATE TYPE profile.gender AS ENUM ('male', 'female', 'other');
 
--- Enhanced Users Table
+
 CREATE TABLE IF NOT EXISTS auth.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS auth.users (
     CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
--- Enhanced Profiles Table
+
 CREATE TABLE IF NOT EXISTS profile.profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS profile.profiles (
     CONSTRAINT valid_age CHECK (birth_date <= CURRENT_DATE - INTERVAL '13 years')
 );
 
--- Enhanced Contact Table
+
 CREATE TABLE IF NOT EXISTS profile.contact (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
@@ -65,7 +65,6 @@ CREATE TABLE IF NOT EXISTS profile.contact (
     location VARCHAR(255),
     timezone VARCHAR(50),
     city VARCHAR(100),
-    state VARCHAR(100),
     postal_code VARCHAR(20),
     country VARCHAR(100),
     phone_verified TIMESTAMP DEFAULT NULL,
@@ -78,7 +77,6 @@ CREATE TABLE IF NOT EXISTS profile.contact (
     CONSTRAINT valid_secondary_email CHECK (secondary_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
--- Enhanced OAuth Users Table
 CREATE TABLE IF NOT EXISTS auth.oauth_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
@@ -93,13 +91,13 @@ CREATE TABLE IF NOT EXISTS auth.oauth_users (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Enhanced Local Users Table
+
 CREATE TABLE IF NOT EXISTS auth.local_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     password VARCHAR(512) NOT NULL,
     last_password_change TIMESTAMP WITH TIME ZONE,
-    password_history JSONB[], -- Store previous password hashes
+    password_history JSONB[],
     force_password_change BOOLEAN DEFAULT FALSE,
     password_expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -124,11 +122,10 @@ CREATE TABLE IF NOT EXISTS session.sessions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
--- New MFA Table
+
 CREATE TABLE IF NOT EXISTS security.mfa_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
-    mfa_enabled BOOLEAN DEFAULT FALSE,
     mfa_type auth.mfa_type,
     mfa_secret TEXT,
     backup_codes TEXT[],
@@ -138,7 +135,7 @@ CREATE TABLE IF NOT EXISTS security.mfa_settings (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Enhanced Security Status Table
+
 CREATE TABLE IF NOT EXISTS security.account_security_status (
     status_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
@@ -158,7 +155,6 @@ CREATE TABLE IF NOT EXISTS security.account_security_status (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Enhanced User Access Logs
 CREATE TABLE IF NOT EXISTS security.user_access_logs (
     log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
@@ -179,11 +175,8 @@ CREATE TABLE IF NOT EXISTS security.user_access_logs (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
     FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
 );
--- Enhanced Session Management
 
 
-
--- User Preferences Table
 CREATE TABLE IF NOT EXISTS auth.user_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
@@ -200,15 +193,12 @@ CREATE TABLE IF NOT EXISTS auth.user_preferences (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- Notification Settings and History
 CREATE TABLE IF NOT EXISTS notification.notification_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     type notification.notification_type NOT NULL,
     name VARCHAR(100) NOT NULL,
     subject VARCHAR(255),
     content TEXT NOT NULL,
-    variables JSONB,
-    active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -217,18 +207,14 @@ CREATE TABLE IF NOT EXISTS notification.notification_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     template_id UUID NOT NULL,
-    type notification.notification_type NOT NULL,
-    content TEXT NOT NULL,
+    notification_type notification.notification_type NOT NULL,
     sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     delivered_at TIMESTAMP WITH TIME ZONE,
     read_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(50),
-    metadata JSONB,
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES notification.notification_templates(id)
 );
 
--- Rate Limiting Table
 CREATE TABLE IF NOT EXISTS security.rate_limits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID,
@@ -236,10 +222,14 @@ CREATE TABLE IF NOT EXISTS security.rate_limits (
     endpoint VARCHAR(255) NOT NULL,
     request_count INTEGER DEFAULT 1,
     window_start TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+    window_duration INTERVAL DEFAULT '1 minute',  
+    max_requests INTEGER DEFAULT 30,             
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    CONSTRAINT rate_limit_unique UNIQUE(user_id, ip_address, endpoint, window_start)
 );
 
--- Create indexes for performance
 CREATE INDEX idx_users_email ON auth.users(email);
 CREATE INDEX idx_users_username ON auth.users(username);
 CREATE INDEX idx_oauth_provider_user ON auth.oauth_users(provider, provider_user_id);
@@ -248,7 +238,6 @@ CREATE INDEX idx_sessions_user ON session.sessions(user_id);
 CREATE INDEX idx_rate_limits_ip_endpoint ON security.rate_limits(ip_address, endpoint);
 CREATE INDEX idx_notification_history_user ON notification.notification_history(user_id);
 
--- Add triggers for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -257,7 +246,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply timestamp triggers to all tables with updated_at
 DO $$ 
 DECLARE 
     t record;

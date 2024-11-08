@@ -16,6 +16,5 @@ type Profile struct {
     BirthDate         time.Time  `json:"birth_date" db:"birth_date"`
     Gender            string     `json:"gender,omitempty" db:"gender"`
     Location          string     `json:"location,omitempty" db:"location"`
-    Timezone          string     `json:"timezone,omitempty" db:"timezone"`
     Language          string     `json:"language" db:"language" default:"en"`
 }

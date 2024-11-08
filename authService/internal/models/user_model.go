@@ -31,9 +31,6 @@ type OAuthUser struct {
     AccessToken    string        `json:"access_token" db:"access_token"`
     RefreshToken   *string       `json:"refresh_token,omitempty" db:"refresh_token"`
     ExpiresAt      *time.Time    `json:"expires_at,omitempty" db:"expires_at"`
-    CreatedAt      time.Time     `json:"created_at" db:"created_at"`
-    UpdatedAt      time.Time     `json:"updated_at" db:"updated_at"`
-    DeletedAt      *time.Time    `json:"deleted_at,omitempty" db:"deleted_at"`
 }
 
 // LocalUsers Table
@@ -45,7 +42,4 @@ type LocalUser struct {
     PasswordHistory   []string    `json:"password_history" db:"password_history"`
     ForcePasswordChange bool      `json:"force_password_change" db:"force_password_change"`
     PasswordExpiresAt *time.Time  `json:"password_expires_at,omitempty" db:"password_expires_at"`
-    CreatedAt         time.Time   `json:"created_at" db:"created_at"`
-    UpdatedAt         time.Time   `json:"updated_at" db:"updated_at"`
-    DeletedAt         *time.Time  `json:"deleted_at,omitempty" db:"deleted_at"`
 }
