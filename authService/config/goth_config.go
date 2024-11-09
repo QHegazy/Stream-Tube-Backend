@@ -1,11 +1,9 @@
 package config
 
 import (
-	"log"
 	"os"
 
 	"github.com/gorilla/sessions"
-	"github.com/joho/godotenv"
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/facebook"
@@ -14,12 +12,7 @@ import (
 	"github.com/markbates/goth/providers/microsoftonline"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-}
+
 
 func LoadGoth() {
     // Load the session secret from the environment variable

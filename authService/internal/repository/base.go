@@ -11,7 +11,6 @@ type ResultChan[T any] struct {
 	Data  T
 }
 
-// Operations defines the CRUD operations that can be performed on a model.
 type Operations[T any] interface {
 	Insert(ctx context.Context, data T) <-chan ResultChan[T]
 	Update(ctx context.Context, data T) <-chan ResultChan[T]

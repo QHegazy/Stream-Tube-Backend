@@ -15,6 +15,8 @@ func OAuth() {
 	// Routes for OAuth authentication
 	r.GET("/auth/:provider", v1.BeginAuthHandler)
 	r.GET("/auth/:provider/callback", v1.CallbackHandler)
+	r.GET("/auth", v1.Auth)
+	
 
 	port := os.Getenv("PORT")
 	if port == "" {
