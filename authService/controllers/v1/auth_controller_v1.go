@@ -1,7 +1,6 @@
 package controllers_v1
 
 import (
-	"authService/internal/service"
 	"authService/utils"
 	"time"
 
@@ -19,15 +18,7 @@ type Claims[T any] struct {
 
 // Auth generates an access token and a refresh token
 func Auth(c *gin.Context) {
-	username := c.Query("username")
-	if username == "" {
-		c.JSON(400, gin.H{"error": "Username is required"})
-		return
-	}
-	service.CreateUser()
-
-	// Generate access token (expires in 15 minutes)
-	accessToken, err := utils.GenerateToken(username, 15*time.Minute)
+	accessToken, err := utils.GenerateToken("username", 15*time.Minute)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to generate access token"})
 		return

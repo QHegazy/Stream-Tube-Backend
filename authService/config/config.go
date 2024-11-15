@@ -24,6 +24,7 @@ type Config struct {
 	PostgresPort    string
 	SSLMode         string
 	JWTSecretKey    string
+	ClientSide      string
 
 }
 
@@ -37,15 +38,16 @@ func init() {
 func GetConfig() *Config {
 	configOnce.Do(func() {
 		config = &Config{
-			RedisPassword:    os.Getenv("REDIS_PASSWORD"),
+			RedisPassword:   os.Getenv("REDIS_PASSWORD"),
 			RedisPort:       os.Getenv("REDIS_PORT"),
 			PostgresUser:    os.Getenv("POSTGRES_USER"),
-			PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
+			PostgresPassword:os.Getenv("POSTGRES_PASSWORD"),
 			PostgresDB:      os.Getenv("POSTGRES_DB"),
 			PostgresHost:    os.Getenv("POSTGRES_HOST"),
 			PostgresPort:    os.Getenv("POSTGRES_PORT"),
 			SSLMode:         os.Getenv("SSL_MODE"),
 			JWTSecretKey:    getRequiredEnv("SECRET_KEY"),
+			ClientSide :     getRequiredEnv("CLIENT_SIDE"),
 		}
 	})
 	return config
@@ -57,4 +59,8 @@ func getRequiredEnv(key string) string {
 		panic(key + " environment variable is not set")
 	}
 	return value
+}
+
+ func GetClientSide() string {
+	return GetConfig().ClientSide
 }

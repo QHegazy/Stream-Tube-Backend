@@ -48,6 +48,7 @@ func LoadGoth() {
             googleCallbackURL,
             "email",
             "profile",
+
         ),
         microsoftonline.New(
             microsoftClientId,

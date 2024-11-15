@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS auth.users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
-    CONSTRAINT valid_username CHECK (username ~* '^[A-Za-z0-9._-]{3,50}$'),
     CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 

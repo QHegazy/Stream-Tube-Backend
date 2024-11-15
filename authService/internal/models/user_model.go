@@ -29,8 +29,8 @@ type OAuthUser struct {
     Provider       OAuthProvider `json:"provider" db:"provider"`
     ProviderUserID string        `json:"provider_user_id" db:"provider_user_id"`
     AccessToken    string        `json:"access_token" db:"access_token"`
-    RefreshToken   *string       `json:"refresh_token,omitempty" db:"refresh_token"`
-    ExpiresAt      *time.Time    `json:"expires_at,omitempty" db:"expires_at"`
+    RefreshToken   string       `json:"refresh_token,omitempty" db:"refresh_token"`
+    ExpiresAt      time.Time    `json:"expires_at,omitempty" db:"expires_at"`
 }
 
 // LocalUsers Table
