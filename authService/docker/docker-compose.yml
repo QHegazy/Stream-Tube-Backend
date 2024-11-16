@@ -1,102 +1,88 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: auth_postgres
-    restart: unless-stopped
+  postgresql-master:
+    container_name: postgresql-master
+    image: "bitnami/postgresql:latest"
+    user: "0:0"
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - 5432:5432
     volumes:
-      - ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf
-      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
-      - postgres_data:/var/lib/postgresql/data
-      - ./ssl:/var/lib/postgresql/ssl
+      - "postgresql_master_data:/bitnami/postgresql"
+      - "./ssl:/opt/bitnami/postgresql/certs/"
+      - "./pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf"
+      - "./init-scripts:/docker-entrypoint-initdb.d"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-auth_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auth_password}
-      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
-      PGDATA: /var/lib/postgresql/data
-      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
-      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
-      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
-      POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-16MB}
-      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-128MB}
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-auth_user} -d ${POSTGRES_DB:-auth_db}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER:-auth}
+      - POSTGRESQL_REPLICATION_PASSWORD=${REPLICATION_PASSWORD:-auth}
+      - POSTGRESQL_USERNAME=${POSTGRES_USER:-auth_user}
+      - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-auth_password}
+      - POSTGRESQL_DATABASE=${POSTGRES_DB:-auth_db}
+      - POSTGRESQL_ENABLE_TLS=yes
+      - POSTGRESQL_SSL_MODE=require
+      - POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt
+      - POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key
+      - POSTGRESQL_MAX_CONNECTIONS=100
+    command:
+      - bash
+      - -c
+      - |
+        chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && \
+        chmod 600 /opt/bitnami/postgresql/certs/postgres.key && \
+        /opt/bitnami/scripts/postgresql/run.sh && \
+        psql -U postgres -c "CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}'" && \
+        psql -U postgres -c "CREATE DATABASE ${POSTGRES_DB}" && \
+        psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ${POSTGRES_DB} TO ${POSTGRES_USER}"
     networks:
       - auth_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    restart: unless-stopped
 
-
+  postgresql-slave:
+    container_name: postgresql-slave
+    image: "bitnami/postgresql:latest"
+    user: "0:0"
+    ports:
+      - 5433:5432
+    depends_on:
+      - postgresql-master
+    volumes:
+      - "./ssl:/opt/bitnami/postgresql/certs/"
+      - "./pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf"
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER:-auth}
+      - POSTGRESQL_REPLICATION_PASSWORD=${REPLICATION_PASSWORD:-auth}
+      - POSTGRESQL_MASTER_HOST=postgresql-master
+      - POSTGRESQL_PASSWORD=${REPLICATION_PASSWORD:-auth}
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_ENABLE_TLS=yes
+      - POSTGRESQL_SSL_MODE=require
+      - POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt
+      - POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key
+      - POSTGRESQL_MAX_CONNECTIONS=100
+    command:
+      - bash
+      - -c
+      - |
+        chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && \
+        chmod 600 /opt/bitnami/postgresql/certs/postgres.key && \
+        /opt/bitnami/scripts/postgresql/run.sh
+    networks:
+      - auth_network
+    restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
-    container_name: auth_redis
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password}
+    image: redis:latest
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_password}
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "${REDIS_PORT}:6379"
     networks:
       - auth_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  backup:
-    image: postgres:16-alpine
-    container_name: auth_backup
-    volumes:
-      - ./backups:/backups
-      - ./backup.sh:/backup.sh
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-auth_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auth_password}
-      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
-      POSTGRES_HOST: postgres
-      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
-    entrypoint: ["sh", "-c", "chmod +x /backup.sh && crond -f"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - auth_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  backup_data:
-    driver: local
+  postgresql_master_data:
 
 networks:
   auth_network:
@@ -104,4 +90,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.30.0.0/16
+        - subnet: 192.168.100.0/24
