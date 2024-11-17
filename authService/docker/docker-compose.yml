@@ -10,8 +10,7 @@ services:
     volumes:
       - "postgresql_master_data:/bitnami/postgresql"
       - "./ssl:/opt/bitnami/postgresql/certs/"
-      - "./pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf"
-      - "./init-scripts:/docker-entrypoint-initdb.d"
+      # - "./conf:/bitnami/postgresql/conf/"
     environment:
       - POSTGRESQL_REPLICATION_MODE=master
       - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER:-auth}
@@ -19,21 +18,19 @@ services:
       - POSTGRESQL_USERNAME=${POSTGRES_USER:-auth_user}
       - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD:-auth_password}
       - POSTGRESQL_DATABASE=${POSTGRES_DB:-auth_db}
+      - POSTGRESQL_POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-auth_password}
       - POSTGRESQL_ENABLE_TLS=yes
-      - POSTGRESQL_SSL_MODE=require
       - POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt
       - POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key
       - POSTGRESQL_MAX_CONNECTIONS=100
-    command:
-      - bash
-      - -c
-      - |
-        chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && \
-        chmod 600 /opt/bitnami/postgresql/certs/postgres.key && \
-        /opt/bitnami/scripts/postgresql/run.sh && \
-        psql -U postgres -c "CREATE USER ${POSTGRES_USER} WITH PASSWORD '${POSTGRES_PASSWORD}'" && \
-        psql -U postgres -c "CREATE DATABASE ${POSTGRES_DB}" && \
-        psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE ${POSTGRES_DB} TO ${POSTGRES_USER}"
+    command: >
+        bash -c "
+          chown -R postgres:postgres /bitnami/postgresql/conf/ &&
+          chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && 
+          chmod 600 /opt/bitnami/postgresql/certs/postgres.key && 
+          /opt/bitnami/scripts/postgresql/run.sh
+        "
+
     networks:
       - auth_network
     restart: unless-stopped
@@ -48,7 +45,7 @@ services:
       - postgresql-master
     volumes:
       - "./ssl:/opt/bitnami/postgresql/certs/"
-      - "./pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf"
+      # - "./conf:/bitnami/postgresql/conf/"
     environment:
       - POSTGRESQL_REPLICATION_MODE=slave
       - POSTGRESQL_REPLICATION_USER=${REPLICATION_USER:-auth}
@@ -61,13 +58,13 @@ services:
       - POSTGRESQL_TLS_CERT_FILE=/opt/bitnami/postgresql/certs/postgres.crt
       - POSTGRESQL_TLS_KEY_FILE=/opt/bitnami/postgresql/certs/postgres.key
       - POSTGRESQL_MAX_CONNECTIONS=100
-    command:
-      - bash
-      - -c
-      - |
-        chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && \
-        chmod 600 /opt/bitnami/postgresql/certs/postgres.key && \
-        /opt/bitnami/scripts/postgresql/run.sh
+    command: >
+        bash -c "
+          chown -R postgres:postgres /bitnami/postgresql/conf/ &&
+          chown postgres:postgres /opt/bitnami/postgresql/certs/postgres.key && 
+          chmod 600 /opt/bitnami/postgresql/certs/postgres.key && 
+          /opt/bitnami/scripts/postgresql/run.sh
+        "
     networks:
       - auth_network
     restart: unless-stopped

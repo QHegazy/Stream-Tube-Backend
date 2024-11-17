@@ -52,3 +52,4 @@ const (
 	GoogleOAuthProvider OAuthProvider = "google"
 	MicrosoftOAuthProvider OAuthProvider = "microsoftonline"
 )
+

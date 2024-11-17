@@ -1,3 +1,4 @@
+docker logs auth_postgres_primary
 #!/bin/bash
 
 # Load environment variables from the .env file
