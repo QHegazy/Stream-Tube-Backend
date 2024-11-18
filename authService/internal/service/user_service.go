@@ -3,25 +3,22 @@ package services
 import (
 	"authService/internal/models"
 	"authService/internal/repository"
-	"authService/utils"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/markbates/goth"
 )
 
-// UserService interface defines methods for user management
+// UserService defines the methods for interacting with user data
 type UserService[T any] interface {
-	CreateUser(user T, result *chan repository.ResultChan[models.User])
-	GetUser(id string, result *chan repository.ResultChan[models.User])
-	UpdateUser(user *models.User, result *chan repository.ResultChan[models.User])
-	DeleteUser(id string, result *chan repository.ResultChan[models.User])
-	CheckUserExists(id string, result chan repository.ResultChan[bool])
+	CreateUser(user *models.User) (uuid.UUID, error)
+	GetUser(id string) (T, error)
+	UpdateUser(user *models.User) (T, error)
+	DeleteUser(id string) error
+	// CheckUserExists(id string) (bool, error)
 }
 
-// userService struct that uses a generic type T
+// userService is the struct that implements the UserService interface
 type userService[T any] struct {
 	userRepo repository.UserRepository
 }
@@ -33,77 +30,89 @@ func NewUserService[T any]() UserService[T] {
 	}
 }
 
-// CreateUser inserts a new user based on Goth user information
-func (s *userService[T]) CreateUser(user T, result *chan repository.ResultChan[models.User]) {
-	now := time.Now().UTC()
-	gothUser, ok := any(user).(goth.User)
-	fmt.Println("user:",user)
+// CreateUser creates a new user and returns its ID
+func (s *userService[T]) CreateUser(user *models.User) (uuid.UUID, error) {
+	ctx := context.Background()
+	createdUser, err := s.userRepo.Insert(ctx, *user)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return createdUser.ID, nil
+}
+
+func (s *userService[T]) GetUser(id string) (T, error) {
+	var result T
+	ctx := context.Background()
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return result, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Fetching the user asynchronously, expecting it to be of type models.User
+	user, err := s.userRepo.Query(ctx, parsedID)
+	if err != nil {
+		return result, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Convert models.User to type T
+	result, ok := any(user).(T)
 	if !ok {
-		*result <- repository.ResultChan[models.User]{Error: fmt.Errorf("invalid user type")}
-		return
+		return result, fmt.Errorf("failed to convert user to type T")
 	}
-	fmt.Println("gothUser:",gothUser)
-	
-	username := gothUser.Name + "_" + utils.GenerateRandomString(4)
-	newUser := models.User{
-		Username:      username,
-		Email:         gothUser.Email,
-		AuthMethod:    models.AuthMethodOAuth,
-		Status:        "active",
-		LastActiveAt:  &now,
-		EmailVerified: &now,
-	}
-	ctx := context.Background()
-	go func() {
-		s.userRepo.Insert(ctx, &newUser, result)
-		
-	}()
+	return result, nil
 }
-
-// GetUser retrieves a user by their ID
-func (s *userService[T]) GetUser(id string, result *chan repository.ResultChan[models.User]) {
-	ctx := context.Background()
-	go func() {
-		parsedID, err := uuid.Parse(id)
-		if err != nil {
-			*result <- repository.ResultChan[models.User]{Error: err}
-			return
-		}
-		s.userRepo.Query(ctx, parsedID, result)
-	}()
-}
-
 // UpdateUser updates the user information
-func (s *userService[T]) UpdateUser(user *models.User, result *chan repository.ResultChan[models.User]) {
+func (s *userService[T]) UpdateUser(user *models.User) (T, error) {
+	var updatedUser T
 	ctx := context.Background()
-	go func() {
-		s.userRepo.Update(ctx, user, result)
-	}()
+
+	// Update user in the repository
+	result,err := s.userRepo.Update(ctx, *user)
+	if err != nil {
+		return updatedUser, fmt.Errorf("failed to update user: %w", err)
+	}
+
+	// Convert models.User to type T
+	updatedUser, ok := any(result).(T)
+	if !ok {
+		return updatedUser, fmt.Errorf("failed to convert user to type T")
+	}
+
+	return updatedUser, nil
 }
 
 // DeleteUser removes a user by their ID
-func (s *userService[T]) DeleteUser(id string, result *chan repository.ResultChan[models.User]) {
+func (s *userService[T]) DeleteUser(id string) error {
 	ctx := context.Background()
-	go func() {
-		parsedID, err := uuid.Parse(id)
-		if err != nil {
-			*result <- repository.ResultChan[models.User]{Error: err}
-			return
-		}
-		s.userRepo.Delete(ctx, parsedID, result)
-	}()
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	err = s.userRepo.Delete(ctx, parsedID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
 }
 
 // CheckUserExists verifies if a user exists by their ID
-func (s *userService[T]) CheckUserExists(id string, result chan repository.ResultChan[bool]) {
-	ctx := context.Background()
-	go func() {
-		parsedID, err := uuid.Parse(id)
-		if err != nil {
-			result <- repository.ResultChan[bool]{Data: false, Error: err}
-			return
-		}
-		exists := s.userRepo.Exists(ctx, parsedID)
-		result <- repository.ResultChan[bool]{Data: exists, Error: nil}
-	}()
-}
+// func (s *userService[T]) CheckUserExists(id string) (bool, error) {
+// 	ctx := context.Background()
+
+// 	parsedID, err := uuid.Parse(id)
+// 	if err != nil {
+// 		return false, fmt.Errorf("invalid user ID: %w", err)
+// 	}
+
+// 	exists, err := s.userRepo.Exists(ctx, parsedID)
+// 	if err != nil {
+// 		return false, fmt.Errorf("failed to check if user exists: %w", err)
+// 	}
+
+// 	return exists, nil
+// }

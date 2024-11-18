@@ -2,69 +2,71 @@ package services
 
 import (
 	"authService/internal/models"
-	"authService/internal/repository"
-	"errors"
-	"log"
+	"authService/utils"
+	"sync"
 	"time"
 
 	"github.com/markbates/goth"
 )
 
-type AccountService interface {
-    CreateLocalAuthAccount(user *models.LocalUser, result *chan repository.ResultChan[models.User])
-    CreateOAuthAccount(user goth.User, result *chan repository.ResultChan[models.User])
+// AccountService defines the interface for account-related operations
+type AccountService[T any] interface {
+	CreateLocalAuthAccount(user *models.LocalUser,s *sync.WaitGroup) (T, error)
+	CreateOAuthAccount(user goth.User,s *sync.WaitGroup) (T, error)
 }
 
-type accountService struct{}
-
-func NewAccountService() AccountService {
-    return &accountService{}
+type accountService[T any] struct {
 }
 
-func (s *accountService) CreateLocalAuthAccount(user *models.LocalUser, result *chan repository.ResultChan[models.User]) {
-  
+func NewAccountService[T any]() AccountService[T] {
+	return &accountService[T]{}
 }
 
-func (s *accountService) CreateOAuthAccount(user goth.User, result *chan repository.ResultChan[models.User]) {
-    userService := NewUserService[goth.User]()
-    userResult := make(chan repository.ResultChan[models.User])
-    go userService.CreateUser(user, &userResult) 
-
-    select {
-    case res := <-userResult:
-        if res.Error != nil {
-            *result <- repository.ResultChan[models.User]{Error: res.Error}
-            return
-        }
-
-        oauthUser := models.OAuthUser{
-            UserID:         res.Data.ID,
-            Provider:       models.OAuthProvider(user.Provider),
-            ProviderUserID: user.UserID,
-            AccessToken:    user.AccessToken,
-            RefreshToken:   user.RefreshToken,
-            ExpiresAt:      user.ExpiresAt,
-        }
-        
-        oauthResult := make(chan repository.ResultChan[models.OAuthUser])
-        go NewOAuthService().CreateOAuthUser(&oauthUser, &oauthResult) 
-
-        select {
-        case oauthRes := <-oauthResult:
-            if oauthRes.Error != nil {
-                *result <- repository.ResultChan[models.User]{Error: oauthRes.Error}
-                return
-            }
-
-            *result <- repository.ResultChan[models.User]{Data: res.Data}
-
-        case <-time.After(10 * time.Second): 
-            log.Println("Timeout creating OAuth user")
-            *result <- repository.ResultChan[models.User]{Error: errors.New("timeout creating OAuth user")}
-        }
-    case <-time.After(10 * time.Second): 
-        log.Println("Timeout creating user")
-        *result <- repository.ResultChan[models.User]{Error: errors.New("timeout creating user")}
-    }
+func (s *accountService[T]) CreateLocalAuthAccount(user *models.LocalUser,ss *sync.WaitGroup) (T, error) {
+	defer ss.Done()
+	var result T
+	return result, nil
 }
 
+func (s *accountService[T]) CreateOAuthAccount(user goth.User,ss *sync.WaitGroup) (T, error) {
+	defer ss.Done()
+	var result T
+    now := time.Now().UTC()
+	// Create a new user via the userService
+	userService := NewUserService[T]()
+	username := user.Name + "_" + utils.GenerateRandomString(4)
+	newUser := models.User{
+		Username:      username,
+		Email:         user.Email,
+		AuthMethod:    models.AuthMethodOAuth,
+		Status:        "active",
+		LastActiveAt:  &now,
+		EmailVerified: &now,
+	}
+	userResult, err := userService.CreateUser(&newUser)
+	if err != nil {
+		return result, err
+	}
+
+	// Create OAuth user data
+	oauthUser := models.OAuthUser{
+		UserID:         userResult,
+		Provider:       models.OAuthProvider(user.Provider),
+		ProviderUserID: user.UserID,
+		AccessToken:    user.AccessToken,
+		RefreshToken:   user.RefreshToken,
+		ExpiresAt:      user.ExpiresAt,
+	}
+
+	// Create OAuth user in the database
+	oauthService := NewOAuthService()
+	_, err = oauthService.CreateOAuthUser(&oauthUser)
+	if err != nil {
+		return result, err
+	}
+
+	// Convert userResult to type T if needed
+	// This depends on your specific implementation
+	
+	return result, nil
+}

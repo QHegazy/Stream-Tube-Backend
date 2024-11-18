@@ -10,10 +10,10 @@ import (
 )
 
 type OAuthService interface {
-	CreateOAuthUser(oauthUser *models.OAuthUser, result *chan repository.ResultChan[models.OAuthUser])
-	GetOAuthUser(id string, result *chan repository.ResultChan[models.OAuthUser])
-	UpdateOAuthUser(oauthUser *models.OAuthUser, result *chan repository.ResultChan[models.OAuthUser])
-	DeleteOAuthUser(id string, result *chan repository.ResultChan[models.OAuthUser])
+	CreateOAuthUser(oauthUser *models.OAuthUser) (models.OAuthUser, error)
+	GetOAuthUser(id string) (models.OAuthUser, error)
+	UpdateOAuthUser(oauthUser *models.OAuthUser) (models.OAuthUser, error)
+	DeleteOAuthUser(id string) error
 }
 
 type oauthService struct {
@@ -26,40 +26,54 @@ func NewOAuthService() OAuthService {
 	}
 }
 
-func (s *oauthService) CreateOAuthUser(oauthUser *models.OAuthUser, result *chan repository.ResultChan[models.OAuthUser]) {
+func (s *oauthService) CreateOAuthUser(oauthUser *models.OAuthUser) (models.OAuthUser, error) {
 	ctx := context.Background()
-	go func() {
-		s.oauthRepo.Insert(ctx, oauthUser, result)
-	}()
+	createdUser, err := s.oauthRepo.Insert(ctx, oauthUser)
+	if err != nil {
+		return models.OAuthUser{}, fmt.Errorf("failed to create OAuth user: %w", err)
+	}
+	return createdUser, nil
 }
 
-func (s *oauthService) GetOAuthUser(id string, result *chan repository.ResultChan[models.OAuthUser]) {
+func (s *oauthService) GetOAuthUser(id string) (models.OAuthUser, error) {
 	ctx := context.Background()
-	go func() {
-		parsedID, err := uuid.Parse(id)
-		if err != nil {
-			*result <- repository.ResultChan[models.OAuthUser]{Error: fmt.Errorf("invalid id: %w", err)}
-			return
-		}
-		s.oauthRepo.Query(ctx, parsedID, result)
-	}()
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return models.OAuthUser{}, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	user, err := s.oauthRepo.Query(ctx, parsedID)
+	if err != nil {
+		return models.OAuthUser{}, fmt.Errorf("failed to retrieve OAuth user: %w", err)
+	}
+
+	return user, nil
 }
 
-func (s *oauthService) UpdateOAuthUser(oauthUser *models.OAuthUser, result *chan repository.ResultChan[models.OAuthUser]) {
+func (s *oauthService) UpdateOAuthUser(oauthUser *models.OAuthUser) (models.OAuthUser, error) {
 	ctx := context.Background()
-	go func() {
-		s.oauthRepo.Update(ctx, oauthUser, result)
-	}()
+
+	updatedUser, err := s.oauthRepo.Update(ctx, oauthUser)
+	if err != nil {
+		return models.OAuthUser{}, fmt.Errorf("failed to update OAuth user: %w", err)
+	}
+
+	return updatedUser, nil
 }
 
-func (s *oauthService) DeleteOAuthUser(id string, result *chan repository.ResultChan[models.OAuthUser]) {
+func (s *oauthService) DeleteOAuthUser(id string) error {
 	ctx := context.Background()
-	go func() {
-		parsedID, err := uuid.Parse(id)
-		if err != nil {
-			*result <- repository.ResultChan[models.OAuthUser]{Error: fmt.Errorf("invalid id: %w", err)}
-			return
-		}
-		s.oauthRepo.Delete(ctx, parsedID, result)
-	}()
+
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	err = s.oauthRepo.Delete(ctx, parsedID)
+	if err != nil {
+		return fmt.Errorf("failed to delete OAuth user: %w", err)
+	}
+
+	return nil
 }

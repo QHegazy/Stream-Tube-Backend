@@ -2,12 +2,12 @@ package controllers_v1
 
 import (
 	"authService/config"
-	"authService/internal/models"
-	"authService/internal/repository"
 	services "authService/internal/service"
+	"fmt"
 	"log"
 	"net/http"
-	"time"
+	"os"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth/gothic"
@@ -25,7 +25,6 @@ func BeginAuthHandler(c *gin.Context) {
 	gothic.BeginAuthHandler(c.Writer, c.Request)
 }
 
-// CallbackHandler handles the OAuth provider's callback after authentication
 func CallbackHandler(c *gin.Context) {
 	provider := c.Param("provider")
 	q := c.Request.URL.Query()
@@ -38,24 +37,19 @@ func CallbackHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Authentication failed"})
 		return
 	}
-	
-	result := make(chan repository.ResultChan[models.User])
-	go services.NewAccountService().CreateOAuthAccount(user, &result)
 
-	select {
-	case result := <-result:
-		if result.Error != nil {
-			log.Printf("User creation error: %v", result.Error)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+	go func() {
+		account:= services.NewAccountService[any]()
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		result, err := account.CreateOAuthAccount(user,&wg)
+		if err != nil {
+			log.Printf("Error creating OAuth account: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating account"})
 			return
 		}
-		// Successfully created user, redirecting
-		c.Redirect(http.StatusMovedPermanently, config.GetClientSide())
-		return
-
-	case <-time.After(30 * time.Second): // Timeout after 30 seconds
-		log.Println("Timeout waiting for user creation")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Request timeout"})
-		return
-	}
+		fmt.Println(result)
+		c.Redirect(301,os.Getenv("CLIENT_SIDE"))
+		wg.Wait()
+	}()
 }
