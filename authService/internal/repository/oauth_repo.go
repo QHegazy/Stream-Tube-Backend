@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"authService/config"
 	"authService/db"
 	"authService/internal/models"
 	"context"
@@ -17,7 +16,6 @@ func NewOAuthRepository() *OAuthRepository {
 }
 
 func (r *OAuthRepository) Insert(ctx context.Context, oauthUser *models.OAuthUser) (models.OAuthUser, error) {
-	db.InitDB(config.GetDBConfig())
 	query := `
 		INSERT INTO auth.oauth_users (user_id, provider, provider_user_id, access_token, refresh_token, expires_at)
 		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
@@ -32,7 +30,6 @@ func (r *OAuthRepository) Insert(ctx context.Context, oauthUser *models.OAuthUse
 }
 
 func (r *OAuthRepository) Query(ctx context.Context, id uuid.UUID) (models.OAuthUser, error) {
-	db.InitDB(config.GetDBConfig())
 	query := `
 		SELECT id, user_id, provider, provider_user_id, access_token, refresh_token, expires_at
 		FROM auth.oauth_users WHERE id = $1`
@@ -56,7 +53,6 @@ func (r *OAuthRepository) Query(ctx context.Context, id uuid.UUID) (models.OAuth
 }
 
 func (r *OAuthRepository) Update(ctx context.Context, oauthUser *models.OAuthUser) (models.OAuthUser, error) {
-	db.InitDB(config.GetDBConfig())
 	query := `
 		UPDATE auth.oauth_users
 		SET user_id = $1, provider = $2, provider_user_id = $3, access_token = $4, refresh_token = $5, expires_at = $6
@@ -73,7 +69,6 @@ func (r *OAuthRepository) Update(ctx context.Context, oauthUser *models.OAuthUse
 }
 
 func (r *OAuthRepository) Delete(ctx context.Context, id uuid.UUID)  error {
-	db.InitDB(config.GetDBConfig())
 	query := `DELETE FROM auth.oauth_users WHERE id = $1 RETURNING id`
 	pool := db.GetPools().DeletePool
 
@@ -85,3 +80,25 @@ func (r *OAuthRepository) Delete(ctx context.Context, id uuid.UUID)  error {
 
 	return nil
 }
+
+func (r *OAuthRepository) CheckOauthUser(ctx context.Context, provider string, providerUserID string) (bool, error) {
+	query := `SELECT * FROM auth.oauth_users WHERE provider = $1 AND provider_user_id = $2 LIMIT 1 RETURNING provider_user_id`
+	pool := db.GetPools().ReadPool
+
+	var providerOauthUserID  string;
+	err := pool.QueryRow(ctx, query, provider, providerUserID).Scan(
+		&providerOauthUserID,
+
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to check oauth user: %w", err)
+	}
+	if providerOauthUserID != providerUserID {
+		return false, nil
+	}
+	return true, nil
+}
+
+
+	
+

@@ -77,3 +77,12 @@ func (s *oauthService) DeleteOAuthUser(id string) error {
 
 	return nil
 }
+
+func (s *oauthService) CheckOAuthUser(provider string, providerUserID string) (bool, error) {
+	ctx := context.Background()
+	exists, err := s.oauthRepo.CheckOauthUser(ctx, provider, providerUserID)
+	if err != nil {
+		return false, fmt.Errorf("failed to check OAuth user: %w", err)
+	}
+	return exists, nil
+}

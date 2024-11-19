@@ -53,3 +53,4 @@ func CallbackHandler(c *gin.Context) {
 		wg.Wait()
 	}()
 }
+

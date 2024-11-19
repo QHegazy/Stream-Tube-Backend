@@ -97,3 +97,15 @@ type RateLimit struct {
 	WindowDuration time.Duration`json:"window_duration" db:"window_duration"`
 	MaxRequests   int           `json:"max_requests" db:"max_requests"`
 }
+
+type Device struct {
+	ID         uuid.UUID `json:"id" db:"id"`
+	UserID     uuid.UUID `json:"user_id" db:"user_id"`
+	OS         string    `json:"os" db:"os"`
+	Browser    string    `json:"browser" db:"browser"`
+	DeviceType string    `json:"device_type" db:"device_type"`
+	IPAddress  string    `json:"ip_address" db:"ip_address"`
+	UserAgent  string   `json:"user_agent" db:"user_agent,omitempty"`
+	LastUsedAt time.Time `json:"last_used_at" db:"last_used_at,omitempty"`
+	Region     string   `json:"region" db:"region,omitempty"`
+}

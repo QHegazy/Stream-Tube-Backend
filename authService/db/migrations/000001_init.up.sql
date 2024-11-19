@@ -108,15 +108,27 @@ CREATE TABLE IF NOT EXISTS auth.local_users (
 CREATE TABLE IF NOT EXISTS session.sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
+    device_id VARCHAR(255) NOT NULL,
     refresh_token VARCHAR(512),
-    device_id VARCHAR(255),
-    device_type VARCHAR(50),
-    ip_address INET,
-    user_agent TEXT,
-    is_mfa_completed BOOLEAN DEFAULT FALSE,
     last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     blacklisted_at TIMESTAMP WITH TIME ZONE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+    FOREIGN KEY (device_id) REFERENCES security.devices(device_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS security.devices (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    os VARCHAR(50) NOT NULL,
+    browser VARCHAR(100) NOT NULL,
+    device_type VARCHAR(50) NOT NULL,
+    ip_address INET NOT NULL,
+    user_agent TEXT,
+    last_used_at TIMESTAMP WITH TIME ZONE,
+    region VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
