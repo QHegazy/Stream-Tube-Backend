@@ -13,8 +13,8 @@ SET search_path TO "auth", "security", "session", "notification", public;
 -- Enhanced Enum Types
 CREATE TYPE auth.user_status AS ENUM ('active', 'inactive', 'suspended', 'banned', 'pending_verification');
 CREATE TYPE auth.oauth_provider AS ENUM ('google', 'facebook', 'github', 'microsoft');
-CREATE TYPE auth.auth_method AS ENUM ('local', 'oauth', 'mfa');
-CREATE TYPE auth.mfa_type AS ENUM ('authenticator', 'sms', 'email', 'security_key');
+CREATE TYPE auth.auth_method AS ENUM ('local', 'oauth');
+CREATE TYPE auth.mfa_type AS ENUM ('sms', 'email','totp');
 CREATE TYPE notification.notification_type AS ENUM ('security', 'account', 'marketing', 'system');
 CREATE TYPE security.risk_level AS ENUM ('low', 'medium', 'high', 'critical');
 CREATE TYPE profile.gender AS ENUM ('male', 'female', 'other');
@@ -90,20 +90,40 @@ CREATE TABLE IF NOT EXISTS auth.oauth_users (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- __________________________________ LOCAL_USER _________________________________________________
+
 
 CREATE TABLE IF NOT EXISTS auth.local_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
-    password VARCHAR(512) NOT NULL,
-    last_password_change TIMESTAMP WITH TIME ZONE,
-    password_history JSONB[],
-    force_password_change BOOLEAN DEFAULT FALSE,
+    password_hash VARCHAR(512) NOT NULL,
     password_expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP DEFAULT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL, 
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS auth.local_user_flags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    local_user_id UUID NOT NULL,
+    force_password_change BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (local_user_id) REFERENCES auth.local_users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS auth.password_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    local_user_id UUID NOT NULL, 
+    password_hash VARCHAR(512) NOT NULL,
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (local_user_id) REFERENCES auth.local_users(id) ON DELETE CASCADE
+);
+
+
+-- __________________________________ SESIION _________________________________________________
 
 CREATE TABLE IF NOT EXISTS session.sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -134,16 +154,39 @@ CREATE TABLE IF NOT EXISTS security.devices (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+
+-- __________________________________ SECURITY _________________________________________________
+
 CREATE TABLE IF NOT EXISTS security.mfa_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     mfa_type auth.mfa_type,
     mfa_secret TEXT,
-    backup_codes TEXT[],
     last_mfa_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE auth.mfa_totp (
+    id SERIAL PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id INT NOT NULL,
+    mfa_settings_id UUID NOT NULL,                 
+    secret VARCHAR(255) NOT NULL,         
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  
+    FOREIGN KEY (mfa_settings_id) REFERENCES security.mfa_settings(id) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE IF NOT EXISTS security.backup_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    mfa_settings_id UUID NOT NULL,
+    code TEXT NOT NULL, 
+    used_count INTEGER DEFAULT 0, 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (mfa_settings_id) REFERENCES security.mfa_settings(id) ON DELETE CASCADE
 );
 
 

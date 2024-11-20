@@ -35,11 +35,25 @@ type OAuthUser struct {
 
 // LocalUsers Table
 type LocalUser struct {
-    ID                uuid.UUID   `json:"id" db:"id" default:"uuid_generate_v4()"`
-    UserID            uuid.UUID   `json:"user_id" db:"user_id"`
-    Password          string      `json:"password" db:"password"`
-    LastPasswordChange *time.Time `json:"last_password_change,omitempty" db:"last_password_change"`
-    PasswordHistory   []string    `json:"password_history" db:"password_history"`
-    ForcePasswordChange bool      `json:"force_password_change" db:"force_password_change"`
-    PasswordExpiresAt *time.Time  `json:"password_expires_at,omitempty" db:"password_expires_at"`
+	ID               uuid.UUID  `json:"id" db:"id"`
+	UserID           uuid.UUID  `json:"user_id" db:"user_id"`
+	PasswordHash     string     `json:"password_hash" db:"password_hash"`
+	PasswordExpiresAt *time.Time `json:"password_expires_at,omitempty" db:"password_expires_at"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
+}
+
+type PasswordHistory struct {
+	ID           uuid.UUID `json:"id" db:"id"`
+	LocalUserID  uuid.UUID `json:"local_user_id" db:"local_user_id"`
+	PasswordHash string    `json:"password_hash" db:"password_hash"`
+	ChangedAt    time.Time `json:"changed_at" db:"changed_at"`
+}
+type LocalUserFlag struct {
+	ID                 uuid.UUID `json:"id" db:"id"`
+	LocalUserID        uuid.UUID `json:"local_user_id" db:"local_user_id"`
+	ForcePasswordChange bool      `json:"force_password_change" db:"force_password_change"`
+	CreatedAt          time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`
 }
