@@ -11,3 +11,11 @@ func GenerateRandomString(length int) string {
 	encoded := base64.RawURLEncoding.EncodeToString(randomBytes)
 	return encoded[:length]
 }
+
+func GenerateRecoveryCodes(count int) []string {
+	codes := make([]string, count)
+	for i := 0; i < count; i++ {
+		codes[i] = GenerateRandomString(4)
+	}
+	return codes
+}

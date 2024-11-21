@@ -97,10 +97,8 @@ CREATE TABLE IF NOT EXISTS auth.local_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     password_hash VARCHAR(512) NOT NULL,
-    password_expires_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL, 
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
@@ -116,10 +114,20 @@ CREATE TABLE IF NOT EXISTS auth.local_user_flags (
 
 CREATE TABLE IF NOT EXISTS auth.password_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    local_user_id UUID NOT NULL, 
+    user_id UUID NOT NULL, 
     password_hash VARCHAR(512) NOT NULL,
-    changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (local_user_id) REFERENCES auth.local_users(id) ON DELETE CASCADE
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS auth.user_security_questions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 
@@ -161,7 +169,6 @@ CREATE TABLE IF NOT EXISTS security.mfa_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
     mfa_type auth.mfa_type,
-    mfa_secret TEXT,
     last_mfa_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -170,7 +177,6 @@ CREATE TABLE IF NOT EXISTS security.mfa_settings (
 
 CREATE TABLE auth.mfa_totp (
     id SERIAL PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id INT NOT NULL,
     mfa_settings_id UUID NOT NULL,                 
     secret VARCHAR(255) NOT NULL,         
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  
@@ -178,17 +184,15 @@ CREATE TABLE auth.mfa_totp (
     FOREIGN KEY (mfa_settings_id) REFERENCES security.mfa_settings(id) ON DELETE CASCADE
 );
 
-
-
 CREATE TABLE IF NOT EXISTS security.backup_codes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    mfa_settings_id UUID NOT NULL,
+    mfa_totpid UUID NOT NULL,
     code TEXT NOT NULL, 
     used_count INTEGER DEFAULT 0, 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (mfa_settings_id) REFERENCES security.mfa_settings(id) ON DELETE CASCADE
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (mfa_totpid) REFERENCES auth.mfa_totp(id) ON DELETE CASCADE
 );
-
 
 CREATE TABLE IF NOT EXISTS security.account_security_status (
     status_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

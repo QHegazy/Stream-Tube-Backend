@@ -8,14 +8,30 @@ import (
 
 
 type MFASettings struct {
-	ID          uuid.UUID  `json:"id" db:"id"`
-	UserID      uuid.UUID  `json:"user_id" db:"user_id"`
-	MFAType     string     `json:"mfa_type" db:"mfa_type"` 
-	MFASecret   string     `json:"mfa_secret" db:"mfa_secret"`
-	BackupCodes []string   `json:"backup_codes" db:"backup_codes"` 
-	LastMFAAt   *time.Time `json:"last_mfa_at" db:"last_mfa_at"`   
+	ID        uuid.UUID `json:"id" db:"id"`
+	UserID    uuid.UUID `json:"user_id" db:"user_id"`
+	MFAType   MFAType   `json:"mfa_type" db:"mfa_type"`
+	LastMFAAt *time.Time `json:"last_mfa_at" db:"last_mfa_at"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
 }
 
+type MFATOTP struct {
+	ID            uuid.UUID `json:"id" db:"id"`                     
+	MFASettingsID uuid.UUID `json:"mfa_settings_id" db:"mfa_settings_id"`
+	Secret        string    `json:"secret" db:"secret"`              
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type BackupCode struct {
+	ID         uuid.UUID `json:"id" db:"id"`
+	MFATOTPID  uuid.UUID `json:"mfa_totp_id" db:"mfa_totpid"`
+	Code       string    `json:"code" db:"code"`                   
+	UsedCount  int       `json:"used_count" db:"used_count"`       
+	CreatedAt  time.Time `json:"created_at" db:"created_at"` 
+	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"` 
+}
 type AccountSecurityStatus struct {
 	StatusID                uuid.UUID      `json:"status_id" db:"status_id"`
 	UserID                  uuid.UUID      `json:"user_id" db:"user_id"`

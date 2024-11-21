@@ -5,6 +5,7 @@ import (
 	"authService/internal/models"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,41 +16,55 @@ func NewLocalAuthRepository() *LocalAuthRepository {
 	return &LocalAuthRepository{}
 }
 
-func (r *LocalAuthRepository) Insert(ctx context.Context, localUser models.LocalUser) (models.LocalUser, error) {
+func (r *LocalAuthRepository) Insert(ctx context.Context, localUser *models.LocalUser) (models.LocalUser, error) {
 	query := `
-		INSERT INTO auth.local_users 
-		(user_id, password, last_password_change, password_history, force_password_change, password_expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+		INSERT INTO auth.local_users (user_id, password_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4) RETURNING id`
 	pool := db.GetPools().CreatePool
 
-	err := pool.QueryRow(ctx, query,
-		localUser.UserID, localUser.Password, localUser.LastPasswordChange,
-		localUser.PasswordHistory, localUser.ForcePasswordChange, localUser.PasswordExpiresAt,
-	).Scan(&localUser.ID)
+	err := pool.QueryRow(ctx, query, localUser.UserID, localUser.PasswordHash, time.Now(), time.Now()).Scan(&localUser.ID)
 	if err != nil {
 		return models.LocalUser{}, fmt.Errorf("failed to insert local user: %w", err)
+	}
+
+	return *localUser, nil
+}
+
+func (r *LocalAuthRepository) Query(ctx context.Context, id uuid.UUID) (models.LocalUser, error) {
+	query := `
+		SELECT id, user_id, password_hash, created_at, updated_at
+		FROM auth.local_users WHERE id = $1`
+	pool := db.GetPools().ReadPool
+
+	localUser := models.LocalUser{}
+	err := pool.QueryRow(ctx, query, id).Scan(
+		&localUser.ID,
+		&localUser.UserID,
+		&localUser.PasswordHash,
+		&localUser.CreatedAt,
+		&localUser.UpdatedAt,
+	)
+	if err != nil {
+		return models.LocalUser{}, fmt.Errorf("failed to query local user: %w", err)
 	}
 
 	return localUser, nil
 }
 
-func (r *LocalAuthRepository) Update(ctx context.Context, localUser models.LocalUser) (models.LocalUser, error) {
+func (r *LocalAuthRepository) Update(ctx context.Context, localUser *models.LocalUser) (models.LocalUser, error) {
 	query := `
-		UPDATE auth.local_users 
-		SET user_id = $1, password = $2, last_password_change = $3,
-		password_history = $4, force_password_change = $5, password_expires_at = $6
-		WHERE id = $7 RETURNING id`
+		UPDATE auth.local_users
+		SET user_id = $1, password_hash = $2, updated_at = $3
+		WHERE id = $4 RETURNING id`
 	pool := db.GetPools().UpdatePool
 
-	err := pool.QueryRow(ctx, query,
-		localUser.UserID, localUser.Password, localUser.LastPasswordChange,
-		localUser.PasswordHistory, localUser.ForcePasswordChange, localUser.PasswordExpiresAt, localUser.ID,
-	).Scan(&localUser.ID)
+	updatedLocalUser := models.LocalUser{}
+	err := pool.QueryRow(ctx, query, localUser.UserID, localUser.PasswordHash, time.Now(), localUser.ID).Scan(&updatedLocalUser.ID)
 	if err != nil {
 		return models.LocalUser{}, fmt.Errorf("failed to update local user: %w", err)
 	}
 
-	return localUser, nil
+	return updatedLocalUser, nil
 }
 
 func (r *LocalAuthRepository) Delete(ctx context.Context, id uuid.UUID) error {
@@ -64,20 +79,22 @@ func (r *LocalAuthRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *LocalAuthRepository) Query(ctx context.Context, id uuid.UUID) (models.LocalUser, error) {
-	query := `
-		SELECT id, user_id, password, last_password_change, password_history, force_password_change, password_expires_at
-		FROM auth.local_users WHERE id = $1`
+func (r *LocalAuthRepository) QueryByUser(ctx context.Context, userID uuid.UUID) (models.LocalUser, error) {
+	query := `SELECT id, user_id, password_hash, created_at, updated_at FROM auth.local_users WHERE user_id = $1`
 	pool := db.GetPools().ReadPool
 
 	localUser := models.LocalUser{}
-	err := pool.QueryRow(ctx, query, id).Scan(
-		&localUser.ID, &localUser.UserID, &localUser.Password, &localUser.LastPasswordChange,
-		&localUser.PasswordHistory, &localUser.ForcePasswordChange, &localUser.PasswordExpiresAt,
+	err := pool.QueryRow(ctx, query, userID).Scan(
+		&localUser.ID,
+		&localUser.UserID,
+		&localUser.PasswordHash,
+		&localUser.CreatedAt,
+		&localUser.UpdatedAt,
 	)
 	if err != nil {
-		return models.LocalUser{}, fmt.Errorf("failed to query local user: %w", err)
+		return models.LocalUser{}, fmt.Errorf("failed to query local user by user ID: %w", err)
 	}
 
 	return localUser, nil
 }
+

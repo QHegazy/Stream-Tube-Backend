@@ -38,10 +38,8 @@ type LocalUser struct {
 	ID               uuid.UUID  `json:"id" db:"id"`
 	UserID           uuid.UUID  `json:"user_id" db:"user_id"`
 	PasswordHash     string     `json:"password_hash" db:"password_hash"`
-	PasswordExpiresAt *time.Time `json:"password_expires_at,omitempty" db:"password_expires_at"`
 	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" db:"updated_at"`
-	DeletedAt        *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }
 
 type PasswordHistory struct {
@@ -56,4 +54,13 @@ type LocalUserFlag struct {
 	ForcePasswordChange bool      `json:"force_password_change" db:"force_password_change"`
 	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type UserSecurityQuestion struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	UserID    uuid.UUID `json:"user_id" db:"user_id"`
+	Question  string    `json:"question" db:"question"`
+	Answer    string    `json:"answer" db:"answer"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
