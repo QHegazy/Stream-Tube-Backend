@@ -1,8 +1,11 @@
 package services
 
 import (
+	dto "authService/Dto"
+	"authService/config"
 	"authService/internal/models"
 	"authService/utils"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,7 +14,7 @@ import (
 
 // AccountService defines the interface for account-related operations
 type AccountService[T any] interface {
-	CreateLocalAuthAccount(user *models.LocalUser,s *sync.WaitGroup) (T, error)
+	CreateLocalAuthAccount(user *dto.RegisterLocalUser,s *sync.WaitGroup) (T, error)
 	CreateOAuthAccount(user goth.User,s *sync.WaitGroup) (T, error)
 }
 
@@ -22,14 +25,50 @@ func NewAccountService[T any]() AccountService[T] {
 	return &accountService[T]{}
 }
 
-func (s *accountService[T]) CreateLocalAuthAccount(user *models.LocalUser,ss *sync.WaitGroup) (T, error) {
-	defer ss.Done()
+func (s *accountService[T]) CreateLocalAuthAccount(user *dto.RegisterLocalUser, wg *sync.WaitGroup) (T, error) {
+	defer wg.Done()
+
 	var result T
-	return result, nil
+	userService := NewUserService[T]()
+	newUser := models.User{
+		Username:      user.Username,
+		Email:         user.Email,
+		AuthMethod:    models.AuthMethodLocal,
+		Status:        "active",
+		EmailVerified: time.Time{},
+		LastActiveAt:  time.Now().UTC(),
+	}
+
+	userResult, err := userService.CreateUser(&newUser)
+	if err != nil {
+		return result, err
+	}
+	PasswordHash,err := utils.HashPasswordWithSalt(user.Password,config.GetConfig().Salt)
+	if  err !=nil {
+		return result ,err
+	}
+	
+	localUserService := NewLocalUserService()
+	newLocalUser := models.LocalUser{
+		UserID:       userResult,
+		PasswordHash: PasswordHash,
+	}
+	err = localUserService.CreateLocalUser(&newLocalUser)
+	if err != nil {
+		return result, err
+	}
+
+	// Convert userResult to T
+	if convertedResult, ok := any(userResult).(T); ok {
+		return convertedResult, nil
+	}
+
+	return result, fmt.Errorf("type mismatch: cannot convert uuid.UUID to %T", result)
 }
 
-func (s *accountService[T]) CreateOAuthAccount(user goth.User,ss *sync.WaitGroup) (T, error) {
-	defer ss.Done()
+
+func (s *accountService[T]) CreateOAuthAccount(user goth.User,wg *sync.WaitGroup) (T, error) {
+	defer wg.Done()
 	var result T
     now := time.Now().UTC()
 	// Create a new user via the userService
@@ -65,8 +104,7 @@ func (s *accountService[T]) CreateOAuthAccount(user goth.User,ss *sync.WaitGroup
 		return result, err
 	}
 
-	// Convert userResult to type T if needed
-	// This depends on your specific implementation
-	
+
 	return result, nil
 }
+

@@ -2,13 +2,15 @@ package controllers_v1
 
 import (
 	dto "authService/Dto"
+	services "authService/internal/service"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Define a custom claims structure
 type Claims[T any] struct {
 	Data T `json:"data"`
 	jwt.RegisteredClaims
@@ -16,17 +18,25 @@ type Claims[T any] struct {
 
 
 
-// Auth generates an access token and a refresh token
 func Auth(c *gin.Context) {
-	var registerRequest dto.RegisterRequest
-	err := c.ShouldBindJSON(&registerRequest)
+	var register dto.RegisterLocalUser
+	err := c.ShouldBindJSON(&register)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	 c.JSONP(200,registerRequest)
-	 
-
-
+	go func() {
+		account:= services.NewAccountService[string]()
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		result, err := account.CreateLocalAuthAccount(&register,&wg)
+		if err != nil {
+			log.Printf("Error creating local user account: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating account"})
+			return
+		}
+		wg.Wait()
+		c.String(200,result)
+	}()
 
 }

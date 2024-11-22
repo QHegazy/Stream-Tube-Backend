@@ -25,6 +25,7 @@ type Config struct {
 	SSLMode         string
 	JWTSecretKey    string
 	ClientSide      string
+	Salt            string
 
 }
 
@@ -38,16 +39,17 @@ func init() {
 func GetConfig() *Config {
 	configOnce.Do(func() {
 		config = &Config{
-			RedisPassword:   os.Getenv("REDIS_PASSWORD"),
-			RedisPort:       os.Getenv("REDIS_PORT"),
-			PostgresUser:    os.Getenv("POSTGRES_USER"),
-			PostgresPassword:os.Getenv("POSTGRES_PASSWORD"),
-			PostgresDB:      os.Getenv("POSTGRES_DB"),
-			PostgresHost:    os.Getenv("POSTGRES_HOST"),
-			PostgresPort:    os.Getenv("POSTGRES_PORT"),
-			SSLMode:         os.Getenv("SSL_MODE"),
+			RedisPassword:   getRequiredEnv("REDIS_PASSWORD"),
+			RedisPort:       getRequiredEnv("REDIS_PORT"),
+			PostgresUser:    getRequiredEnv("POSTGRES_USER"),
+			PostgresPassword:getRequiredEnv("POSTGRES_PASSWORD"),
+			PostgresDB:      getRequiredEnv("POSTGRES_DB"),
+			PostgresHost:    getRequiredEnv("POSTGRES_HOST"),
+			PostgresPort:    getRequiredEnv("POSTGRES_PORT"),
+			SSLMode:         getRequiredEnv("SSL_MODE"),
 			JWTSecretKey:    getRequiredEnv("SECRET_KEY"),
 			ClientSide :     getRequiredEnv("CLIENT_SIDE"),
+			Salt: 			 getRequiredEnv("SALT"),
 		}
 	})
 	return config

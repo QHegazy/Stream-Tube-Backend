@@ -2,7 +2,8 @@ package main
 
 import (
 	"authService/auth_grpc"
-	"authService/oauth_server"
+	"authService/auth_server"
+
 	"sync"
 )
 
@@ -18,7 +19,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done() 
-		oauth_server.OAuth();
+		auth_server.Auth()
 	}()
 	wg.Wait()
 }

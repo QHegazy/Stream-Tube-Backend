@@ -1,4 +1,4 @@
-package oauth_server
+package auth_server
 
 import (
 	v1 "authService/controllers/v1"
@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func OAuth() {
+func Auth() {
 	r := gin.Default()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
