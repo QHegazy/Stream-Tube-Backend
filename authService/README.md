@@ -24,21 +24,21 @@ Key features include:
 
 ```plaintext
 ├── auth_grpc                   # gRPC server and services
-├── auth_proto_generated         # Generated gRPC files from proto definitions
-├── cmd                          # Application entry point
-├── config                       # Configuration files (DB, JWT, OAuth, etc.)
-├── controllers                  # HTTP controllers for authentication and OAuth endpoints
-├── crts                          # SSL certificates for secure communication
-├── db                            # Database connections and migrations
-├── deployments                  # Kubernetes configurations for deployment
-├── docker                       # Docker configurations for local development
-├── Dto                           # Data Transfer Objects (DTOs) for request validation
-├── go.mod                        # Go module file
-├── go.sum                        # Go checksum file
-├── internal                     # Core application logic (models, repositories, services)
-├── middlewares                  # Custom middlewares (authentication, CORS, error handling)
-├── oauth_server                 # OAuth server implementation
-├── scripts                       # Utility scripts (e.g., migration scripts)
-├── test                          # Unit and integration tests
-├── utils                         # Utility functions (e.g., JWT signing)
-└── README.md                     # This file
+├── auth_proto_generated        # Generated gRPC files from proto definitions
+├── cmd                         # Application entry point
+├── config                      # Configuration files (DB, JWT, OAuth, etc.)
+├── controllers                 # HTTP controllers for authentication and OAuth endpoints
+├── crts                        # SSL certificates for secure communication
+├── db                          # Database connections and migrations
+├── deployments                 # Kubernetes configurations for deployment
+├── docker                      # Docker configurations for local development
+├── Dto                         # Data Transfer Objects (DTOs) for request validation
+├── go.mod                      # Go module file
+├── go.sum                      # Go checksum file
+├── internal                    # Core application logic (models, repositories, services)
+├── middlewares                 # Custom middlewares (authentication, CORS, error handling)
+├── oauth_server                # OAuth server implementation
+├── scripts                     # Utility scripts (e.g., migration scripts)
+├── test                        # Unit and integration tests
+├── utils                       # Utility functions (e.g., JWT signing)
+└── README.md                   # This file
