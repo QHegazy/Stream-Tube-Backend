@@ -1,8 +1,8 @@
 package controllers_v1
 
 import (
-	"authService/utils"
-	"time"
+	dto "authService/Dto"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -18,10 +18,15 @@ type Claims[T any] struct {
 
 // Auth generates an access token and a refresh token
 func Auth(c *gin.Context) {
-	accessToken, err := utils.GenerateToken("username", 15*time.Minute)
+	var registerRequest dto.RegisterRequest
+	err := c.ShouldBindJSON(&registerRequest)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to generate access token"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"access_token": accessToken})
+	 c.JSONP(200,registerRequest)
+	 
+
+
+
 }

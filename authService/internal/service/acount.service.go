@@ -40,8 +40,8 @@ func (s *accountService[T]) CreateOAuthAccount(user goth.User,ss *sync.WaitGroup
 		Email:         user.Email,
 		AuthMethod:    models.AuthMethodOAuth,
 		Status:        "active",
-		LastActiveAt:  &now,
-		EmailVerified: &now,
+		EmailVerified: now,
+		LastActiveAt:  now,
 	}
 	userResult, err := userService.CreateUser(&newUser)
 	if err != nil {

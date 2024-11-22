@@ -42,7 +42,17 @@ rollback_migrations() {
     exit 1
   fi
 }
+force_version() {
+  echo "Forcing migration version..."
+  migrate -path $MIGRATION_PATH -database $DATABASE_URL force "$2"
+  if [ $? -eq 0 ]; then
+    echo "Migration version forced successfully."
+  else
+    echo "Error forcing migration version."
+    exit 1
+  fi
 
+}
 # Show migration version (to see current state of the migrations)
 show_version() {
   echo "Current migration version:"
@@ -55,6 +65,7 @@ usage() {
   echo "  apply   - Apply the up migrations"
   echo "  rollback- Rollback the down migrations"
   echo "  version - Show the current migration version"
+
 }
 
 # Main execution: Check arguments and run the appropriate function
@@ -73,6 +84,16 @@ case "$1" in
   version)
     show_version
     ;;
+
+  force)
+    if [ $# -eq 2 ]; then
+      force_version "$1" "$2"
+    else
+      echo "Error: force command requires a version argument."
+      exit 1
+    fi
+    ;;
+
   *)
     usage
     exit 1

@@ -15,7 +15,7 @@ func GenerateRandomString(length int) string {
 func GenerateRecoveryCodes(count int) []string {
 	codes := make([]string, count)
 	for i := 0; i < count; i++ {
-		codes[i] = GenerateRandomString(4)
+		codes[i] = GenerateRandomString(count)
 	}
 	return codes
 }

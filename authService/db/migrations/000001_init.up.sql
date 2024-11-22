@@ -34,11 +34,11 @@ CREATE TABLE IF NOT EXISTS auth.users (
     CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
+-- __________________________________ PROFILE _________________________________________________
 
-CREATE TABLE IF NOT EXISTS profile.profiles (
+CREATE TABLE IF NOT EXISTS profile.profiles (  
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL UNIQUE,
-    full_name VARCHAR(255) NOT NULL,
+    user_id UUID NOT NULL,
     profile_picture_url VARCHAR(255),
     cover_photo_url VARCHAR(255),
     birth_date DATE NOT NULL,
@@ -47,34 +47,59 @@ CREATE TABLE IF NOT EXISTS profile.profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    CONSTRAINT valid_age CHECK (birth_date <= CURRENT_DATE - INTERVAL '13 years')
+    CONSTRAINT valid_age CHECK (birth_date <= CURRENT_DATE - INTERVAL '13 years'),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS profile.address (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    address_line1 VARCHAR(255),
+    address_line2 VARCHAR(255),
+    city VARCHAR(100),
+    country VARCHAR(100),
+    timezone VARCHAR(50)
+);
 
+CREATE TABLE IF NOT EXISTS profile.secondary_email (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL,
+    verified_at TIMESTAMP DEFAULT NULL,
+    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+);
+
+CREATE TABLE IF NOT EXISTS profile.emergency_contact (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contact_name VARCHAR(255) NOT NULL,
+    contact_phone VARCHAR(20) NOT NULL,
+    CONSTRAINT valid_phone CHECK (contact_phone ~* '^\+?[1-9]\d{1,14}$')
+);
 CREATE TABLE IF NOT EXISTS profile.contact (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     phone_number VARCHAR(20),
-    secondary_email VARCHAR(255),
-    emergency_contact_name VARCHAR(255),
-    emergency_contact_phone VARCHAR(20),
-    address_line1 VARCHAR(255),
-    address_line2 VARCHAR(255),
-    location VARCHAR(255),
-    timezone VARCHAR(50),
-    city VARCHAR(100),
-    postal_code VARCHAR(20),
-    country VARCHAR(100),
-    phone_verified TIMESTAMP DEFAULT NULL,
-    secondary_email_verified TIMESTAMP DEFAULT NULL,
+    address_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP DEFAULT NULL,
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    CONSTRAINT valid_phone CHECK (phone_number ~* '^\+?[1-9]\d{1,14}$'),
-    CONSTRAINT valid_secondary_email CHECK (secondary_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL,
+    FOREIGN KEY (address_id) REFERENCES profile.address(id) ON DELETE SET NULL,
+    CONSTRAINT valid_phone CHECK (phone_number ~* '^\+?[1-9]\d{1,14}$')
 );
+
+
+CREATE TABLE IF NOT EXISTS profile.secondary_contact (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    secondary_email_id UUID NOT NULL,
+    emergency_contact_id UUID NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    FOREIGN KEY (secondary_email_id) REFERENCES profile.secondary_email(id) ON DELETE CASCADE,
+    FOREIGN KEY (emergency_contact_id) REFERENCES profile.emergency_contact(id) ON DELETE CASCADE
+);
+
+-- __________________________________ OAUTH _________________________________________________
 
 CREATE TABLE IF NOT EXISTS auth.oauth_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -130,22 +155,7 @@ CREATE TABLE IF NOT EXISTS auth.user_security_questions (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
-
--- __________________________________ SESIION _________________________________________________
-
-CREATE TABLE IF NOT EXISTS session.sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
-    device_id VARCHAR(255) NOT NULL,
-    refresh_token VARCHAR(512),
-    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    blacklisted_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
-    FOREIGN KEY (device_id) REFERENCES security.devices(device_id) ON DELETE CASCADE
-);
+-- __________________________________ SECURITY _________________________________________________
 
 CREATE TABLE IF NOT EXISTS security.devices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -162,9 +172,6 @@ CREATE TABLE IF NOT EXISTS security.devices (
     FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
-
--- __________________________________ SECURITY _________________________________________________
-
 CREATE TABLE IF NOT EXISTS security.mfa_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL UNIQUE,
@@ -176,7 +183,7 @@ CREATE TABLE IF NOT EXISTS security.mfa_settings (
 );
 
 CREATE TABLE auth.mfa_totp (
-    id SERIAL PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     mfa_settings_id UUID NOT NULL,                 
     secret VARCHAR(255) NOT NULL,         
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  
@@ -216,24 +223,17 @@ CREATE TABLE IF NOT EXISTS security.account_security_status (
 CREATE TABLE IF NOT EXISTS security.user_access_logs (
     log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
-    session_id UUID,
+    session_id UUID NOT NULL,
     auth_method auth.auth_method NOT NULL,
-    auth_provider auth.oauth_provider,
-    ip_address INET,
-    user_agent TEXT,
-    device_info JSONB,
-    location_info JSONB,
+    device_id UUID NOT NULL,
     login_successful BOOLEAN NOT NULL,
     mfa_used BOOLEAN DEFAULT FALSE,
     mfa_type auth.mfa_type,
     risk_score INTEGER,
     metadata JSONB DEFAULT '{}',
     failure_reason VARCHAR(255),
-    login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
-    FOREIGN KEY (session_id) REFERENCES session.sessions(id) ON DELETE SET NULL
+    login_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
 
 CREATE TABLE IF NOT EXISTS auth.user_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -243,7 +243,6 @@ CREATE TABLE IF NOT EXISTS auth.user_preferences (
     push_notifications BOOLEAN DEFAULT TRUE,
     two_factor_auth_enabled BOOLEAN DEFAULT FALSE,
     preferred_communication_method VARCHAR(50) DEFAULT 'email',
-    marketing_preferences JSONB DEFAULT '{}',
     privacy_settings JSONB DEFAULT '{}',
     theme_preference VARCHAR(20) DEFAULT 'light',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -288,6 +287,22 @@ CREATE TABLE IF NOT EXISTS security.rate_limits (
     CONSTRAINT rate_limit_unique UNIQUE(user_id, ip_address, endpoint, window_start)
 );
 
+-- __________________________________ SESIION _________________________________________________
+
+CREATE TABLE IF NOT EXISTS session.sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    device_id UUID NOT NULL, 
+    refresh_token VARCHAR(512),
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    blacklisted_at TIMESTAMP WITH TIME ZONE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+    FOREIGN KEY (device_id) REFERENCES security.devices(id) ON DELETE CASCADE
+);
+
 CREATE INDEX idx_users_email ON auth.users(email);
 CREATE INDEX idx_users_username ON auth.users(username);
 CREATE INDEX idx_oauth_provider_user ON auth.oauth_users(provider, provider_user_id);
@@ -321,3 +336,4 @@ BEGIN
                        t.table_schema, t.table_name, t.table_schema, t.table_name);
     END LOOP;
 END $$;
+

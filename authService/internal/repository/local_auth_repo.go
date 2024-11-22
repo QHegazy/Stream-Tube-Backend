@@ -1,6 +1,7 @@
 package repository
 
 import (
+	dto "authService/Dto"
 	"authService/db"
 	"authService/internal/models"
 	"context"
@@ -30,14 +31,12 @@ func (r *LocalAuthRepository) Insert(ctx context.Context, localUser *models.Loca
 	return *localUser, nil
 }
 
-func (r *LocalAuthRepository) Query(ctx context.Context, id uuid.UUID) (models.LocalUser, error) {
+func (r *LocalAuthRepository) Query(ctx context.Context, localUser models.LocalUser) (models.LocalUser, error) {
 	query := `
 		SELECT id, user_id, password_hash, created_at, updated_at
-		FROM auth.local_users WHERE id = $1`
+		FROM auth.local_users WHERE password_hash = $1 AND user_id = $2`
 	pool := db.GetPools().ReadPool
-
-	localUser := models.LocalUser{}
-	err := pool.QueryRow(ctx, query, id).Scan(
+	err := pool.QueryRow(ctx, query,&localUser.PasswordHash,&localUser.UserID).Scan(
 		&localUser.ID,
 		&localUser.UserID,
 		&localUser.PasswordHash,
@@ -98,3 +97,27 @@ func (r *LocalAuthRepository) QueryByUser(ctx context.Context, userID uuid.UUID)
 	return localUser, nil
 }
 
+func (r *LocalAuthRepository) UpdateLocalUserPassword(ctx context.Context, oldPasswordHash dto.LocalUserDto, newPasswordHash string) error {
+	query := `UPDATE auth.local_users SET password_hash = $1, updated_at = $2 WHERE user_id = $3 AND password_hash = $4`
+	pool := db.GetPools().UpdatePool
+
+	_, err := pool.Exec(ctx, query, newPasswordHash, time.Now(), oldPasswordHash.LocalUserID, oldPasswordHash.PasswordHash)
+	if err != nil {
+		return fmt.Errorf("failed to update local user password: %w", err)
+	}
+
+	return nil
+}
+
+func (r *LocalAuthRepository) CheckLocalUserExists(ctx context.Context, password string) (bool, error) {
+	query := `SELECT COUNT(*) FROM auth.local_users WHERE password_hash = $1`
+	pool := db.GetPools().ReadPool
+
+	var count int
+	err := pool.QueryRow(ctx, query, password).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check local user exists: %w", err)
+	}
+
+	return count > 0, nil
+}

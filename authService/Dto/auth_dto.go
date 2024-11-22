@@ -10,12 +10,6 @@ type RegisterRequest struct {
 	Username       string    `json:"username" validate:"required,min=3,max=50,alphanumunicode"`
 	Email          string    `json:"email" validate:"required,email"`
 	Password       string    `json:"password" validate:"required,min=8"`
-	FullName       string    `json:"full_name"`
-	BirthDate      time.Time `json:"birth_date"`
-	Gender         string    `json:"gender,omitempty"`
-	Location       string    `json:"location,omitempty"`
-	Timezone       string    `json:"timezone,omitempty"`
-	Language       string    `json:"language"`
 }
 
 type LoginRequest struct {
@@ -44,6 +38,12 @@ type ProfileResponse struct {
 	Location          string     `json:"location,omitempty"`
 	Timezone          string     `json:"timezone,omitempty"`
 	Language          string     `json:"language"`
+}
+
+type LocalUserDto struct{
+	LocalUserID  uuid.UUID `json:"local_user_id" db:"local_user_id"`
+	PasswordHash string    `json:"password_hash" db:"password_hash"`
+
 }
 
 type OAuthProvider string

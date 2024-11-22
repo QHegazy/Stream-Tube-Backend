@@ -18,11 +18,11 @@ func NewPasswordHistoryRepository() *PasswordHistoryRepository {
 
 func (r *PasswordHistoryRepository) Insert(ctx context.Context, passwordHistory *models.PasswordHistory) (models.PasswordHistory, error) {
 	query := `
-		INSERT INTO auth.password_history (local_user_id, password_hash, changed_at)
+		INSERT INTO auth.password_history (user_id, password_hash, changed_at)
 		VALUES ($1, $2, $3) RETURNING id`
 	pool := db.GetPools().CreatePool
 
-	err := pool.QueryRow(ctx, query, passwordHistory.LocalUserID, passwordHistory.PasswordHash, passwordHistory.ChangedAt).Scan(&passwordHistory.ID)
+	err := pool.QueryRow(ctx, query, passwordHistory.UserID, passwordHistory.PasswordHash, passwordHistory.CreatedAt).Scan(&passwordHistory.ID)
 	if err != nil {
 		return models.PasswordHistory{}, fmt.Errorf("failed to insert password history: %w", err)
 	}
@@ -32,16 +32,16 @@ func (r *PasswordHistoryRepository) Insert(ctx context.Context, passwordHistory 
 
 func (r *PasswordHistoryRepository) Query(ctx context.Context, id uuid.UUID) (models.PasswordHistory, error) {
 	query := `
-		SELECT id, local_user_id, password_hash, changed_at
+		SELECT id, user_id, password_hash, changed_at
 		FROM auth.password_history WHERE id = $1`
 	pool := db.GetPools().ReadPool
 
 	passwordHistory := models.PasswordHistory{}
 	err := pool.QueryRow(ctx, query, id).Scan(
 		&passwordHistory.ID,
-		&passwordHistory.LocalUserID,
+		&passwordHistory.UserID,
 		&passwordHistory.PasswordHash,
-		&passwordHistory.ChangedAt,
+		&passwordHistory.CreatedAt,
 	)
 	if err != nil {
 		return models.PasswordHistory{}, fmt.Errorf("failed to query password history: %w", err)
@@ -53,11 +53,11 @@ func (r *PasswordHistoryRepository) Query(ctx context.Context, id uuid.UUID) (mo
 func (r *PasswordHistoryRepository) Update(ctx context.Context, passwordHistory *models.PasswordHistory) (models.PasswordHistory, error) {
 	query := `
 		UPDATE auth.password_history
-		SET local_user_id = $1, password_hash = $2, changed_at = $3
+		SET user_id = $1, password_hash = $2, changed_at = $3
 		WHERE id = $4 RETURNING id`
 	pool := db.GetPools().UpdatePool
 	updatedPasswordHistory := models.PasswordHistory{}
-	err := pool.QueryRow(ctx, query, passwordHistory.LocalUserID, passwordHistory.PasswordHash, passwordHistory.ChangedAt, passwordHistory.ID).Scan(&updatedPasswordHistory.ID)
+	err := pool.QueryRow(ctx, query, passwordHistory.UserID, passwordHistory.PasswordHash, passwordHistory.CreatedAt, passwordHistory.ID).Scan(&updatedPasswordHistory.ID)
 	if err != nil {
 		return models.PasswordHistory{}, fmt.Errorf("failed to update password history: %w", err)
 	}
@@ -77,11 +77,11 @@ func (r *PasswordHistoryRepository) Delete(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
-func (r *PasswordHistoryRepository) QueryByLocalUserID(ctx context.Context, localUserID uuid.UUID) ([]models.PasswordHistory, error) {
-	query := `SELECT id, local_user_id, password_hash, changed_at FROM auth.password_history WHERE local_user_id = $1`
+func (r *PasswordHistoryRepository) QueryByUserID(ctx context.Context, UserID uuid.UUID) ([]models.PasswordHistory, error) {
+	query := `SELECT id, user_id, password_hash, changed_at FROM auth.password_history WHERE user_id = $1`
 	pool := db.GetPools().ReadPool
 
-	rows, err := pool.Query(ctx, query, localUserID)
+	rows, err := pool.Query(ctx, query, UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query password history by local user ID: %w", err)
 	}
@@ -92,9 +92,9 @@ func (r *PasswordHistoryRepository) QueryByLocalUserID(ctx context.Context, loca
 		var passwordHistory models.PasswordHistory
 		err := rows.Scan(
 			&passwordHistory.ID,
-			&passwordHistory.LocalUserID,
+			&passwordHistory.UserID,
 			&passwordHistory.PasswordHash,
-			&passwordHistory.ChangedAt,
+			&passwordHistory.CreatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan password history row: %w", err)
@@ -109,22 +109,22 @@ func (r *PasswordHistoryRepository) QueryByLocalUserID(ctx context.Context, loca
 	return passwordHistories, nil
 }
 
-func (r *PasswordHistoryRepository) DeleteByLocalUserID(ctx context.Context, localUserID uuid.UUID) error {
-	query := `DELETE FROM auth.password_history WHERE local_user_id = $1`
+func (r *PasswordHistoryRepository) DeleteByUserID(ctx context.Context, UserID uuid.UUID) error {
+	query := `DELETE FROM auth.password_history WHERE user_id = $1`
 	pool := db.GetPools().DeletePool
 
-	_, err := pool.Exec(ctx, query, localUserID)
+	_, err := pool.Exec(ctx, query, UserID)
 	if err != nil {
 		return fmt.Errorf("failed to delete password history by local user ID: %w", err)
 	}
 
 	return nil
 }
-func (r *PasswordHistoryRepository) GeneratePasswordHistory(ctx context.Context, localUserID uuid.UUID, passwordHash string) (models.PasswordHistory, error) {
+func (r *PasswordHistoryRepository) GeneratePasswordHistory(ctx context.Context, UserID uuid.UUID, passwordHash string) (models.PasswordHistory, error) {
 	passwordHistory := models.PasswordHistory{
-		LocalUserID:  localUserID,
+		UserID:  UserID,
 		PasswordHash: passwordHash,
-		ChangedAt:    time.Now(),
+		CreatedAt:    time.Now(),
 	}
 	insertedPasswordHistory, err := r.Insert(ctx, &passwordHistory)
 	if err != nil {
@@ -132,23 +132,23 @@ func (r *PasswordHistoryRepository) GeneratePasswordHistory(ctx context.Context,
 	}
 	return insertedPasswordHistory, nil
 }
-func (r *PasswordHistoryRepository) DeleteOldPasswordHistory(ctx context.Context, localUserID uuid.UUID, maxHistory int) error {
-	query := `DELETE FROM auth.password_history WHERE local_user_id = $1 AND id NOT IN (SELECT id FROM auth.password_history WHERE local_user_id = $1 ORDER BY changed_at DESC LIMIT $2)`
+func (r *PasswordHistoryRepository) DeleteOldPasswordHistory(ctx context.Context, UserID uuid.UUID, maxHistory int) error {
+	query := `DELETE FROM auth.password_history WHERE user_id = $1 AND id NOT IN (SELECT id FROM auth.password_history WHERE user_id = $1 ORDER BY changed_at DESC LIMIT $2)`
 	pool := db.GetPools().DeletePool
 
-	_, err := pool.Exec(ctx, query, localUserID, maxHistory)
+	_, err := pool.Exec(ctx, query, UserID, maxHistory)
 	if err != nil {
 		return fmt.Errorf("failed to delete old password history: %w", err)
 	}
 
 	return nil
 }
-func (r *PasswordHistoryRepository) CountPasswordHistoryByLocalUserID(ctx context.Context, localUserID uuid.UUID) (int, error) {
-	query := `SELECT COUNT(*) FROM auth.password_history WHERE local_user_id = $1`
+func (r *PasswordHistoryRepository) CountPasswordHistoryByUserID(ctx context.Context, UserID uuid.UUID) (int, error) {
+	query := `SELECT COUNT(*) FROM auth.password_history WHERE user_id = $1`
 	pool := db.GetPools().ReadPool
 
 	var count int
-	err := pool.QueryRow(ctx, query, localUserID).Scan(&count)
+	err := pool.QueryRow(ctx, query, UserID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count password history by local user ID: %w", err)
 	}
