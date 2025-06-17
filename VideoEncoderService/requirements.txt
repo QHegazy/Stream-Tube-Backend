@@ -1,4 +1,4 @@
 grpcio==1.66.1
 grpcio-reflection==1.66.1
-protobuf==5.28.0
+protobuf==5.29.5
 python-dotenv==1.0.1
